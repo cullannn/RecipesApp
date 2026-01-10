@@ -42,6 +42,9 @@ export const mockDealsProvider: DealsProvider = {
     if (!normalizedPostal) {
       return [];
     }
+    if (!normalizedPostal.startsWith('M')) {
+      return [];
+    }
     return applyFilters(allDeals, query);
   },
 };
