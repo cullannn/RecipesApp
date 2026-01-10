@@ -5,7 +5,8 @@ import { appStorage } from './storage';
 
 type GroceryListState = {
   items: GroceryListItem[];
-  setItems: (items: GroceryListItem[]) => void;
+  planId?: string;
+  setItems: (items: GroceryListItem[], planId?: string) => void;
   toggleChecked: (itemId: string) => void;
   clearChecked: () => void;
 };
@@ -14,7 +15,8 @@ export const useGroceryListStore = create<GroceryListState>()(
   persist(
     (set, get) => ({
       items: [],
-      setItems: (items) => set({ items }),
+      planId: undefined,
+      setItems: (items, planId) => set({ items, planId }),
       toggleChecked: (itemId) => {
         const items = get().items.map((item) =>
           item.id === itemId ? { ...item, checked: !item.checked } : item
