@@ -25,6 +25,19 @@ In the output, you'll find options to open the app in a
 
 You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
 
+## Bestco flyer OCR (optional)
+
+To generate Bestco deals from the flyer page:
+
+1. Copy `.env.example` to `.env` and set `OCR_SPACE_API_KEY`.
+2. Run:
+
+```bash
+npm run ocr:bestco
+```
+
+This writes OCR-parsed deals to `src/fixtures/deals/toronto/bestco.json`.
+
 ## Get a fresh project
 
 When you're ready, run:

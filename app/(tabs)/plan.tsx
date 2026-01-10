@@ -1,13 +1,27 @@
 import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Image } from 'expo-image';
 
 import { useDeals } from '@/src/hooks/useDeals';
 import { useRecipes } from '@/src/hooks/useRecipes';
-import { generateMealPlan } from '@/src/logic/mealPlan';
+import { buildGroceryList, generateMealPlan } from '@/src/logic/mealPlan';
 import { useMealPlanStore } from '@/src/state/useMealPlanStore';
 import { usePreferencesStore } from '@/src/state/usePreferencesStore';
 
 const mealOptions = [3, 5, 7];
+
+function formatScaledQuantity(
+  quantity: number | string,
+  unit: string,
+  scale: number
+): string {
+  if (typeof quantity === 'number') {
+    const scaled = Number.isFinite(scale) ? quantity * scale : quantity;
+    const rounded = Math.round(scaled * 100) / 100;
+    return `${rounded} ${unit}`.trim();
+  }
+  return `${quantity} ${unit}`.trim();
+}
 
 export default function PlanScreen() {
   const recipes = useRecipes();
@@ -28,6 +42,8 @@ export default function PlanScreen() {
   const [maxCookInput, setMaxCookInput] = useState(maxCookTimeMins ? String(maxCookTimeMins) : '');
   const [servingsInput, setServingsInput] = useState(servings ? String(servings) : '');
   const [error, setError] = useState('');
+
+  const effectiveServings = servings && servings > 0 ? servings : undefined;
 
   const pinnedRecipes = useMemo(
     () => recipes.filter((recipe) => pinnedRecipeIds.includes(recipe.id)),
@@ -66,8 +82,18 @@ export default function PlanScreen() {
     setPlan(generated);
   };
 
+  const groceryList = useMemo(() => {
+    if (!plan) {
+      return [];
+    }
+    const scopedDeals = plan.selectedStore
+      ? (dealsQuery.data ?? []).filter((deal) => deal.store === plan.selectedStore)
+      : dealsQuery.data ?? [];
+    return buildGroceryList(plan, scopedDeals);
+  }, [plan, dealsQuery.data]);
+
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={styles.title}>Meal plan</Text>
       <Text style={styles.subtitle}>Choose how many meals to plan this week.</Text>
 
@@ -125,15 +151,37 @@ export default function PlanScreen() {
 
       <View style={styles.planSection}>
         <Text style={styles.sectionTitle}>This week</Text>
+        {plan?.selectedStore ? (
+          <Text style={styles.planStore}>Shop at: {plan.selectedStore}</Text>
+        ) : null}
+        {effectiveServings ? (
+          <Text style={styles.planStore}>Servings target: {effectiveServings}</Text>
+        ) : null}
         {plan?.recipes.length ? (
           plan.recipes.map((recipe, index) => (
             <View key={recipe.id} style={styles.planCard}>
+              {recipe.imageUrl ? (
+                <Image source={{ uri: recipe.imageUrl }} style={styles.planImage} />
+              ) : null}
               <Text style={styles.planTitle}>
                 {index + 1}. {recipe.title}
               </Text>
               <Text style={styles.planMeta}>
-                {recipe.cookTimeMins} mins • Serves {recipe.servings}
+                {recipe.cookTimeMins} mins • Serves {effectiveServings ?? recipe.servings}
               </Text>
+              <Text style={styles.planMetaTitle}>Ingredients</Text>
+              {recipe.ingredients.map((ingredient, ingredientIndex) => {
+                const scaled = formatScaledQuantity(
+                  ingredient.quantity,
+                  ingredient.unit,
+                  effectiveServings ? effectiveServings / recipe.servings : 1
+                );
+                return (
+                  <Text key={`${recipe.id}-ingredient-${ingredientIndex}`} style={styles.planMeta}>
+                    {scaled} {ingredient.name}
+                  </Text>
+                );
+              })}
             </View>
           ))
         ) : (
@@ -142,6 +190,32 @@ export default function PlanScreen() {
           </Text>
         )}
       </View>
+
+      {plan?.recipes.length ? (
+        <View style={styles.planSection}>
+          <Text style={styles.sectionTitle}>Grocery list</Text>
+          {groceryList.length ? (
+            groceryList.map((item) => (
+              <View key={item.id} style={styles.groceryRow}>
+                <View style={styles.groceryCheck} />
+                <View style={styles.groceryText}>
+                  <Text style={styles.groceryName}>{item.name}</Text>
+                  <Text style={styles.groceryMeta}>
+                    Buy: {item.totalQuantity}
+                    {item.matchedDeal
+                      ? ` • ${item.matchedDeal.store} $${item.matchedDeal.price.toFixed(2)}`
+                      : plan?.selectedStore
+                        ? ` • ${plan.selectedStore}`
+                        : ''}
+                  </Text>
+                </View>
+              </View>
+            ))
+          ) : (
+            <Text style={styles.placeholderText}>No grocery items yet.</Text>
+          )}
+        </View>
+      ) : null}
     </ScrollView>
   );
 }
@@ -149,7 +223,10 @@ export default function PlanScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  content: {
     padding: 20,
+    paddingBottom: 32,
   },
   title: {
     fontSize: 22,
@@ -235,6 +312,17 @@ const styles = StyleSheet.create({
   planSection: {
     marginTop: 8,
   },
+  planImage: {
+    width: '100%',
+    height: 160,
+    borderRadius: 10,
+    marginBottom: 10,
+  },
+  planStore: {
+    fontSize: 13,
+    color: '#555',
+    marginBottom: 8,
+  },
   planCard: {
     padding: 14,
     borderRadius: 12,
@@ -249,6 +337,40 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   planMeta: {
+    fontSize: 12,
+    color: '#666',
+    marginBottom: 2,
+  },
+  planMetaTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  groceryRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  groceryCheck: {
+    width: 18,
+    height: 18,
+    borderRadius: 5,
+    borderWidth: 1,
+    borderColor: '#bbb',
+    marginTop: 2,
+    marginRight: 10,
+  },
+  groceryText: {
+    flex: 1,
+  },
+  groceryName: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  groceryMeta: {
     fontSize: 12,
     color: '#666',
   },

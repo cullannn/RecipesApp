@@ -45,6 +45,7 @@ export type MealPlan = {
   mealsRequested: number;
   recipes: Recipe[];
   createdAt: string;
+  selectedStore?: string;
   constraints?: {
     dietary?: string[];
     maxCookTimeMins?: number;

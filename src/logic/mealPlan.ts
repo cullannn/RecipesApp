@@ -39,13 +39,21 @@ function applyConstraints(recipes: Recipe[], constraints?: MealPlan['constraints
   });
 }
 
-export function generateMealPlan(options: PlanOptions): MealPlan {
-  const { mealsRequested, deals, pinnedRecipeIds = [], constraints } = options;
-  const filteredRecipes = applyConstraints(options.recipes, constraints);
-  const dietaryPrefs = constraints?.dietary;
+type SelectionResult = {
+  recipes: Recipe[];
+  totalScore: number;
+};
 
-  const pinned = filteredRecipes.filter((recipe) => pinnedRecipeIds.includes(recipe.id));
-  const remaining = filteredRecipes
+function selectRecipesForDeals(options: {
+  mealsRequested: number;
+  recipes: Recipe[];
+  deals: DealItem[];
+  pinnedRecipeIds: string[];
+  dietaryPrefs?: string[];
+}): SelectionResult {
+  const { mealsRequested, recipes, deals, pinnedRecipeIds, dietaryPrefs } = options;
+  const pinned = recipes.filter((recipe) => pinnedRecipeIds.includes(recipe.id));
+  const remaining = recipes
     .filter((recipe) => !pinnedRecipeIds.includes(recipe.id))
     .sort((a, b) => {
       const scoreDiff =
@@ -76,11 +84,79 @@ export function generateMealPlan(options: PlanOptions): MealPlan {
     selected.push(recipe);
   }
 
+  const totalScore = selected.reduce(
+    (sum, recipe) => sum + scoreRecipe(recipe, deals, dietaryPrefs),
+    0
+  );
+  return { recipes: selected, totalScore };
+}
+
+function pickBestStore(deals: DealItem[], recipes: Recipe[], options: {
+  mealsRequested: number;
+  pinnedRecipeIds: string[];
+  dietaryPrefs?: string[];
+}): { store?: string; selection: SelectionResult } {
+  if (deals.length === 0) {
+    return {
+      selection: selectRecipesForDeals({
+        mealsRequested: options.mealsRequested,
+        recipes,
+        deals,
+        pinnedRecipeIds: options.pinnedRecipeIds,
+        dietaryPrefs: options.dietaryPrefs,
+      }),
+    };
+  }
+  const dealsByStore = new Map<string, DealItem[]>();
+  for (const deal of deals) {
+    const list = dealsByStore.get(deal.store) ?? [];
+    list.push(deal);
+    dealsByStore.set(deal.store, list);
+  }
+
+  let bestStore: string | undefined;
+  let bestSelection: SelectionResult | undefined;
+  for (const [store, storeDeals] of dealsByStore.entries()) {
+    const selection = selectRecipesForDeals({
+      mealsRequested: options.mealsRequested,
+      recipes,
+      deals: storeDeals,
+      pinnedRecipeIds: options.pinnedRecipeIds,
+      dietaryPrefs: options.dietaryPrefs,
+    });
+    if (
+      !bestSelection ||
+      selection.totalScore > bestSelection.totalScore ||
+      (selection.totalScore === bestSelection.totalScore && store.localeCompare(bestStore ?? '') < 0)
+    ) {
+      bestSelection = selection;
+      bestStore = store;
+    }
+  }
+
+  return {
+    store: bestStore,
+    selection: bestSelection ?? { recipes: [], totalScore: 0 },
+  };
+}
+
+export function generateMealPlan(options: PlanOptions): MealPlan {
+  const { mealsRequested, deals, pinnedRecipeIds = [], constraints } = options;
+  const filteredRecipes = applyConstraints(options.recipes, constraints);
+  const dietaryPrefs = constraints?.dietary;
+
+  const { store, selection } = pickBestStore(deals, filteredRecipes, {
+    mealsRequested,
+    pinnedRecipeIds,
+    dietaryPrefs,
+  });
+
   return {
     id: buildPlanId(),
     mealsRequested,
-    recipes: selected,
+    recipes: selection.recipes,
     createdAt: new Date().toISOString(),
+    selectedStore: store,
     constraints,
   };
 }

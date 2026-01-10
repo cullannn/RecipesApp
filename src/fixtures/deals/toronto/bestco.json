@@ -1,0 +1,101 @@
+[
+  {
+    "id": "bestco-was-9-99-1038",
+    "title": "Was:$ 9.99,",
+    "store": "Bestco Fresh Foods",
+    "price": 1038,
+    "unit": "each",
+    "category": "Other",
+    "validFrom": "2026-01-10",
+    "validTo": "2026-01-17",
+    "location": "Toronto"
+  },
+  {
+    "id": "bestco-was-15-99",
+    "title": "Was:.",
+    "store": "Bestco Fresh Foods",
+    "price": 15.99,
+    "unit": "each",
+    "category": "Other",
+    "validFrom": "2026-01-10",
+    "validTo": "2026-01-17",
+    "location": "Toronto"
+  },
+  {
+    "id": "bestco-was-1099",
+    "title": "Was.",
+    "store": "Bestco Fresh Foods",
+    "price": 1099,
+    "unit": "each",
+    "category": "Other",
+    "validFrom": "2026-01-10",
+    "validTo": "2026-01-17",
+    "location": "Toronto"
+  },
+  {
+    "id": "bestco-was-6-99-48",
+    "title": "Was:$ 6.99",
+    "store": "Bestco Fresh Foods",
+    "price": 48,
+    "unit": "each",
+    "category": "Other",
+    "validFrom": "2026-01-10",
+    "validTo": "2026-01-17",
+    "location": "Toronto"
+  },
+  {
+    "id": "bestco-was-11-99",
+    "title": "Was:",
+    "store": "Bestco Fresh Foods",
+    "price": 11.99,
+    "unit": "each",
+    "category": "Other",
+    "validFrom": "2026-01-10",
+    "validTo": "2026-01-17",
+    "location": "Toronto"
+  },
+  {
+    "id": "bestco-was-36-99",
+    "title": "Was:",
+    "store": "Bestco Fresh Foods",
+    "price": 36.99,
+    "unit": "each",
+    "category": "Other",
+    "validFrom": "2026-01-10",
+    "validTo": "2026-01-17",
+    "location": "Toronto"
+  },
+  {
+    "id": "bestco-was-19-99",
+    "title": "Was:",
+    "store": "Bestco Fresh Foods",
+    "price": 19.99,
+    "unit": "each",
+    "category": "Other",
+    "validFrom": "2026-01-10",
+    "validTo": "2026-01-17",
+    "location": "Toronto"
+  },
+  {
+    "id": "bestco-was-17-99",
+    "title": "Was:",
+    "store": "Bestco Fresh Foods",
+    "price": 17.99,
+    "unit": "each",
+    "category": "Other",
+    "validFrom": "2026-01-10",
+    "validTo": "2026-01-17",
+    "location": "Toronto"
+  },
+  {
+    "id": "bestco-was-12-99",
+    "title": "Was:",
+    "store": "Bestco Fresh Foods",
+    "price": 12.99,
+    "unit": "each",
+    "category": "Other",
+    "validFrom": "2026-01-10",
+    "validTo": "2026-01-17",
+    "location": "Toronto"
+  }
+]

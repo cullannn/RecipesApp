@@ -1,4 +1,5 @@
 import { ScrollView, StyleSheet, Text, View, Pressable } from 'react-native';
+import { Image } from 'expo-image';
 import { useLocalSearchParams } from 'expo-router';
 
 import { useDeals } from '@/src/hooks/useDeals';
@@ -27,6 +28,9 @@ export default function RecipeDetailScreen() {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
+      {recipe.imageUrl ? (
+        <Image source={{ uri: recipe.imageUrl }} style={styles.heroImage} />
+      ) : null}
       <Text style={styles.title}>{recipe.title}</Text>
       <Text style={styles.meta}>
         {recipe.cookTimeMins} mins • Serves {recipe.servings}
@@ -61,6 +65,12 @@ export default function RecipeDetailScreen() {
 const styles = StyleSheet.create({
   container: {
     padding: 20,
+  },
+  heroImage: {
+    width: '100%',
+    height: 220,
+    borderRadius: 12,
+    marginBottom: 16,
   },
   centered: {
     flex: 1,

@@ -29,7 +29,10 @@ export default function GroceryListScreen() {
     if (!dealsQuery.data && !dealsQuery.isLoading) {
       return;
     }
-    const next = buildGroceryList(plan, dealsQuery.data ?? []);
+    const scopedDeals = plan.selectedStore
+      ? (dealsQuery.data ?? []).filter((deal) => deal.store === plan.selectedStore)
+      : dealsQuery.data ?? [];
+    const next = buildGroceryList(plan, scopedDeals);
     const checkedMap = new Map(items.map((item) => [item.id, item.checked]));
     const merged = next.map((item) => ({
       ...item,
@@ -116,6 +119,9 @@ export default function GroceryListScreen() {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Grocery list</Text>
+      {plan.selectedStore ? (
+        <Text style={styles.storeNote}>Shop at: {plan.selectedStore}</Text>
+      ) : null}
       <View style={styles.controlsRow}>
         <View style={styles.switchRow}>
           <Text style={styles.switchLabel}>Sort by store</Text>
@@ -153,10 +159,12 @@ export default function GroceryListScreen() {
                 {item.name}
               </Text>
               <Text style={styles.itemMeta}>
-                {item.totalQuantity}
+                Buy: {item.totalQuantity}
                 {item.matchedDeal
                   ? ` • ${item.matchedDeal.store} $${item.matchedDeal.price.toFixed(2)}`
-                  : ''}
+                  : plan.selectedStore
+                    ? ` • ${plan.selectedStore}`
+                    : ''}
               </Text>
             </View>
           </Pressable>
@@ -180,6 +188,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#555',
     marginBottom: 16,
+  },
+  storeNote: {
+    fontSize: 13,
+    color: '#555',
+    marginBottom: 10,
   },
   controlsRow: {
     gap: 12,
