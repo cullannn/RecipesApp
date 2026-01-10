@@ -18,7 +18,17 @@ function applyConstraints(recipes: Recipe[], constraints?: MealPlan['constraints
   if (!constraints) {
     return recipes;
   }
+  const dietaryPrefs = (constraints.dietary ?? [])
+    .map((pref) => normalizeName(pref))
+    .filter((pref) => pref && pref !== 'none');
   return recipes.filter((recipe) => {
+    if (dietaryPrefs.length > 0) {
+      const tags = (recipe.tags ?? []).map((tag) => normalizeName(tag));
+      const matchesAll = dietaryPrefs.every((pref) => tags.includes(pref));
+      if (!matchesAll) {
+        return false;
+      }
+    }
     if (constraints.maxCookTimeMins && recipe.cookTimeMins > constraints.maxCookTimeMins) {
       return false;
     }
@@ -32,12 +42,14 @@ function applyConstraints(recipes: Recipe[], constraints?: MealPlan['constraints
 export function generateMealPlan(options: PlanOptions): MealPlan {
   const { mealsRequested, deals, pinnedRecipeIds = [], constraints } = options;
   const filteredRecipes = applyConstraints(options.recipes, constraints);
+  const dietaryPrefs = constraints?.dietary;
 
   const pinned = filteredRecipes.filter((recipe) => pinnedRecipeIds.includes(recipe.id));
   const remaining = filteredRecipes
     .filter((recipe) => !pinnedRecipeIds.includes(recipe.id))
     .sort((a, b) => {
-      const scoreDiff = scoreRecipe(b, deals) - scoreRecipe(a, deals);
+      const scoreDiff =
+        scoreRecipe(b, deals, dietaryPrefs) - scoreRecipe(a, deals, dietaryPrefs);
       if (scoreDiff !== 0) {
         return scoreDiff;
       }
