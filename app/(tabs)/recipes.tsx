@@ -8,14 +8,15 @@ import { usePreferencesStore } from '@/src/state/usePreferencesStore';
 import { getRecipeDealMatches, scoreRecipe } from '@/src/utils/matching';
 
 export default function RecipesScreen() {
-  const { postalCode } = usePreferencesStore();
+  const { postalCode, dietaryPreferences } = usePreferencesStore();
   const recipes = useRecipes();
   const dealsQuery = useDeals({ postalCode });
 
   const rankedRecipes = useMemo(() => {
     const deals = dealsQuery.data ?? [];
     return [...recipes].sort((a, b) => {
-      const scoreDiff = scoreRecipe(b, deals) - scoreRecipe(a, deals);
+      const scoreDiff =
+        scoreRecipe(b, deals, dietaryPreferences) - scoreRecipe(a, deals, dietaryPreferences);
       if (scoreDiff !== 0) {
         return scoreDiff;
       }
@@ -25,7 +26,7 @@ export default function RecipesScreen() {
       }
       return a.id.localeCompare(b.id);
     });
-  }, [recipes, dealsQuery.data]);
+  }, [recipes, dealsQuery.data, dietaryPreferences]);
 
   return (
     <View style={styles.container}>
