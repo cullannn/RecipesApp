@@ -1,0 +1,112 @@
+[
+  {
+    "id": "co-001",
+    "title": "Rotisserie chicken",
+    "store": "Costco",
+    "price": 7.99,
+    "unit": "each",
+    "category": "meat",
+    "validFrom": "2026-01-01",
+    "validTo": "2026-01-07",
+    "location": "M5V"
+  },
+  {
+    "id": "co-002",
+    "title": "Ground turkey",
+    "store": "Costco",
+    "price": 17.99,
+    "unit": "1.36 kg",
+    "category": "meat",
+    "validFrom": "2026-01-01",
+    "validTo": "2026-01-07",
+    "location": "M5V"
+  },
+  {
+    "id": "co-003",
+    "title": "Shredded cheese",
+    "store": "Costco",
+    "price": 12.99,
+    "unit": "1.13 kg",
+    "category": "dairy",
+    "validFrom": "2026-01-01",
+    "validTo": "2026-01-07",
+    "location": "M5V"
+  },
+  {
+    "id": "co-004",
+    "title": "Romaine lettuce",
+    "store": "Costco",
+    "price": 4.99,
+    "unit": "3 pack",
+    "category": "produce",
+    "validFrom": "2026-01-01",
+    "validTo": "2026-01-07",
+    "location": "M5V"
+  },
+  {
+    "id": "co-005",
+    "title": "Avocados",
+    "store": "Costco",
+    "price": 6.99,
+    "unit": "6 pack",
+    "category": "produce",
+    "validFrom": "2026-01-01",
+    "validTo": "2026-01-07",
+    "location": "M5V"
+  },
+  {
+    "id": "co-006",
+    "title": "Tomato sauce",
+    "store": "Costco",
+    "price": 9.99,
+    "unit": "3 x 680 ml",
+    "category": "pantry",
+    "validFrom": "2026-01-01",
+    "validTo": "2026-01-07",
+    "location": "M5V"
+  },
+  {
+    "id": "co-007",
+    "title": "Brown rice",
+    "store": "Costco",
+    "price": 12.99,
+    "unit": "5 kg",
+    "category": "pantry",
+    "validFrom": "2026-01-01",
+    "validTo": "2026-01-07",
+    "location": "M5V"
+  },
+  {
+    "id": "co-008",
+    "title": "Frozen shrimp",
+    "store": "Costco",
+    "price": 18.99,
+    "unit": "1 kg",
+    "category": "frozen",
+    "validFrom": "2026-01-01",
+    "validTo": "2026-01-07",
+    "location": "M5V"
+  },
+  {
+    "id": "co-009",
+    "title": "Almonds",
+    "store": "Costco",
+    "price": 13.99,
+    "unit": "1.13 kg",
+    "category": "snacks",
+    "validFrom": "2026-01-01",
+    "validTo": "2026-01-07",
+    "location": "M5V"
+  },
+  {
+    "id": "co-010",
+    "title": "Dish soap",
+    "store": "Costco",
+    "price": 9.99,
+    "unit": "2 x 1.2 L",
+    "category": "household",
+    "validFrom": "2026-01-01",
+    "validTo": "2026-01-07",
+    "location": "M5V"
+  }
+]

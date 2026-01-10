@@ -1,0 +1,112 @@
+[
+  {
+    "id": "lb-001",
+    "title": "Atlantic salmon fillet",
+    "store": "Loblaws",
+    "price": 9.99,
+    "unit": "lb",
+    "category": "meat",
+    "validFrom": "2026-01-01",
+    "validTo": "2026-01-07",
+    "location": "M5V"
+  },
+  {
+    "id": "lb-002",
+    "title": "Boneless chicken breast",
+    "store": "Loblaws",
+    "price": 5.99,
+    "unit": "lb",
+    "category": "meat",
+    "validFrom": "2026-01-01",
+    "validTo": "2026-01-07",
+    "location": "M5V"
+  },
+  {
+    "id": "lb-003",
+    "title": "Greek yogurt",
+    "store": "Loblaws",
+    "price": 3.49,
+    "unit": "750 g",
+    "category": "dairy",
+    "validFrom": "2026-01-01",
+    "validTo": "2026-01-07",
+    "location": "M5V"
+  },
+  {
+    "id": "lb-004",
+    "title": "Fresh spinach",
+    "store": "Loblaws",
+    "price": 2.99,
+    "unit": "227 g",
+    "category": "produce",
+    "validFrom": "2026-01-01",
+    "validTo": "2026-01-07",
+    "location": "M5V"
+  },
+  {
+    "id": "lb-005",
+    "title": "Baby carrots",
+    "store": "Loblaws",
+    "price": 1.99,
+    "unit": "340 g",
+    "category": "produce",
+    "validFrom": "2026-01-01",
+    "validTo": "2026-01-07",
+    "location": "M5V"
+  },
+  {
+    "id": "lb-006",
+    "title": "Basmati rice",
+    "store": "Loblaws",
+    "price": 6.99,
+    "unit": "4 lb",
+    "category": "pantry",
+    "validFrom": "2026-01-01",
+    "validTo": "2026-01-07",
+    "location": "M5V"
+  },
+  {
+    "id": "lb-007",
+    "title": "Olive oil",
+    "store": "Loblaws",
+    "price": 7.99,
+    "unit": "750 ml",
+    "category": "pantry",
+    "validFrom": "2026-01-01",
+    "validTo": "2026-01-07",
+    "location": "M5V"
+  },
+  {
+    "id": "lb-008",
+    "title": "Frozen mixed vegetables",
+    "store": "Loblaws",
+    "price": 3.29,
+    "unit": "750 g",
+    "category": "frozen",
+    "validFrom": "2026-01-01",
+    "validTo": "2026-01-07",
+    "location": "M5V"
+  },
+  {
+    "id": "lb-009",
+    "title": "Potato chips",
+    "store": "Loblaws",
+    "price": 2.49,
+    "unit": "200 g",
+    "category": "snacks",
+    "validFrom": "2026-01-01",
+    "validTo": "2026-01-07",
+    "location": "M5V"
+  },
+  {
+    "id": "lb-010",
+    "title": "Orange juice",
+    "store": "Loblaws",
+    "price": 3.99,
+    "unit": "1.54 L",
+    "category": "beverages",
+    "validFrom": "2026-01-01",
+    "validTo": "2026-01-07",
+    "location": "M5V"
+  }
+]

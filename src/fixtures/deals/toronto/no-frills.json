@@ -1,0 +1,112 @@
+[
+  {
+    "id": "nf-001",
+    "title": "Chicken thighs, bone-in",
+    "store": "No Frills",
+    "price": 4.99,
+    "unit": "lb",
+    "category": "meat",
+    "validFrom": "2026-01-01",
+    "validTo": "2026-01-07",
+    "location": "M5V"
+  },
+  {
+    "id": "nf-002",
+    "title": "Ground beef, lean",
+    "store": "No Frills",
+    "price": 5.49,
+    "unit": "lb",
+    "category": "meat",
+    "validFrom": "2026-01-01",
+    "validTo": "2026-01-07",
+    "location": "M5V"
+  },
+  {
+    "id": "nf-003",
+    "title": "Extra firm tofu",
+    "store": "No Frills",
+    "price": 2.49,
+    "unit": "400 g",
+    "category": "pantry",
+    "validFrom": "2026-01-01",
+    "validTo": "2026-01-07",
+    "location": "M5V"
+  },
+  {
+    "id": "nf-004",
+    "title": "Yellow onions",
+    "store": "No Frills",
+    "price": 1.49,
+    "unit": "2 lb bag",
+    "category": "produce",
+    "validFrom": "2026-01-01",
+    "validTo": "2026-01-07",
+    "location": "M5V"
+  },
+  {
+    "id": "nf-005",
+    "title": "Roma tomatoes",
+    "store": "No Frills",
+    "price": 0.99,
+    "unit": "lb",
+    "category": "produce",
+    "validFrom": "2026-01-01",
+    "validTo": "2026-01-07",
+    "location": "M5V"
+  },
+  {
+    "id": "nf-006",
+    "title": "Spaghetti",
+    "store": "No Frills",
+    "price": 1.29,
+    "unit": "900 g",
+    "category": "pantry",
+    "validFrom": "2026-01-01",
+    "validTo": "2026-01-07",
+    "location": "M5V"
+  },
+  {
+    "id": "nf-007",
+    "title": "Long grain rice",
+    "store": "No Frills",
+    "price": 3.99,
+    "unit": "2 kg",
+    "category": "pantry",
+    "validFrom": "2026-01-01",
+    "validTo": "2026-01-07",
+    "location": "M5V"
+  },
+  {
+    "id": "nf-008",
+    "title": "Canned black beans",
+    "store": "No Frills",
+    "price": 0.99,
+    "unit": "540 ml",
+    "category": "pantry",
+    "validFrom": "2026-01-01",
+    "validTo": "2026-01-07",
+    "location": "M5V"
+  },
+  {
+    "id": "nf-009",
+    "title": "Large eggs",
+    "store": "No Frills",
+    "price": 2.79,
+    "unit": "12 pack",
+    "category": "dairy",
+    "validFrom": "2026-01-01",
+    "validTo": "2026-01-07",
+    "location": "M5V"
+  },
+  {
+    "id": "nf-010",
+    "title": "2% milk",
+    "store": "No Frills",
+    "price": 4.59,
+    "unit": "2 L",
+    "category": "dairy",
+    "validFrom": "2026-01-01",
+    "validTo": "2026-01-07",
+    "location": "M5V"
+  }
+]

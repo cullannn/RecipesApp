@@ -1,0 +1,112 @@
+[
+  {
+    "id": "fc-001",
+    "title": "Tilapia fillet",
+    "store": "FreshCo",
+    "price": 6.99,
+    "unit": "lb",
+    "category": "meat",
+    "validFrom": "2026-01-01",
+    "validTo": "2026-01-07",
+    "location": "M5V"
+  },
+  {
+    "id": "fc-002",
+    "title": "Chicken wings",
+    "store": "FreshCo",
+    "price": 3.99,
+    "unit": "lb",
+    "category": "meat",
+    "validFrom": "2026-01-01",
+    "validTo": "2026-01-07",
+    "location": "M5V"
+  },
+  {
+    "id": "fc-003",
+    "title": "Mozzarella cheese",
+    "store": "FreshCo",
+    "price": 3.99,
+    "unit": "400 g",
+    "category": "dairy",
+    "validFrom": "2026-01-01",
+    "validTo": "2026-01-07",
+    "location": "M5V"
+  },
+  {
+    "id": "fc-004",
+    "title": "Mushrooms",
+    "store": "FreshCo",
+    "price": 1.99,
+    "unit": "227 g",
+    "category": "produce",
+    "validFrom": "2026-01-01",
+    "validTo": "2026-01-07",
+    "location": "M5V"
+  },
+  {
+    "id": "fc-005",
+    "title": "Zucchini",
+    "store": "FreshCo",
+    "price": 1.29,
+    "unit": "lb",
+    "category": "produce",
+    "validFrom": "2026-01-01",
+    "validTo": "2026-01-07",
+    "location": "M5V"
+  },
+  {
+    "id": "fc-006",
+    "title": "Canned coconut milk",
+    "store": "FreshCo",
+    "price": 1.79,
+    "unit": "400 ml",
+    "category": "pantry",
+    "validFrom": "2026-01-01",
+    "validTo": "2026-01-07",
+    "location": "M5V"
+  },
+  {
+    "id": "fc-007",
+    "title": "Ramen noodles",
+    "store": "FreshCo",
+    "price": 2.49,
+    "unit": "5 pack",
+    "category": "pantry",
+    "validFrom": "2026-01-01",
+    "validTo": "2026-01-07",
+    "location": "M5V"
+  },
+  {
+    "id": "fc-008",
+    "title": "Frozen fries",
+    "store": "FreshCo",
+    "price": 2.99,
+    "unit": "1 kg",
+    "category": "frozen",
+    "validFrom": "2026-01-01",
+    "validTo": "2026-01-07",
+    "location": "M5V"
+  },
+  {
+    "id": "fc-009",
+    "title": "Trail mix",
+    "store": "FreshCo",
+    "price": 4.49,
+    "unit": "400 g",
+    "category": "snacks",
+    "validFrom": "2026-01-01",
+    "validTo": "2026-01-07",
+    "location": "M5V"
+  },
+  {
+    "id": "fc-010",
+    "title": "Iced tea",
+    "store": "FreshCo",
+    "price": 3.49,
+    "unit": "2 L",
+    "category": "beverages",
+    "validFrom": "2026-01-01",
+    "validTo": "2026-01-07",
+    "location": "M5V"
+  }
+]

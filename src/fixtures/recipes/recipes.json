@@ -1,0 +1,558 @@
+[
+  {
+    "id": "r-001",
+    "title": "Chicken Stir-Fry",
+    "servings": 4,
+    "cookTimeMins": 25,
+    "tags": ["dairy-free"],
+    "ingredients": [
+      { "name": "chicken breast", "quantity": 1, "unit": "lb", "category": "meat" },
+      { "name": "broccoli", "quantity": 1, "unit": "head", "category": "produce" },
+      { "name": "bell pepper", "quantity": 1, "unit": "each", "category": "produce" },
+      { "name": "soy sauce", "quantity": 3, "unit": "tbsp", "category": "pantry" },
+      { "name": "garlic", "quantity": 3, "unit": "cloves", "category": "produce" },
+      { "name": "rice", "quantity": 2, "unit": "cups", "category": "pantry" }
+    ],
+    "steps": [
+      "Cook rice according to package.",
+      "Stir-fry chicken until browned.",
+      "Add vegetables and garlic, cook until tender.",
+      "Add soy sauce and serve over rice."
+    ]
+  },
+  {
+    "id": "r-002",
+    "title": "Spaghetti Bolognese",
+    "servings": 4,
+    "cookTimeMins": 35,
+    "ingredients": [
+      { "name": "ground beef", "quantity": 1, "unit": "lb", "category": "meat" },
+      { "name": "spaghetti", "quantity": 1, "unit": "lb", "category": "pantry" },
+      { "name": "onion", "quantity": 1, "unit": "each", "category": "produce" },
+      { "name": "canned diced tomatoes", "quantity": 1, "unit": "can", "category": "pantry" },
+      { "name": "tomato sauce", "quantity": 1, "unit": "jar", "category": "pantry" },
+      { "name": "parmesan", "quantity": 0.5, "unit": "cup", "category": "dairy" }
+    ],
+    "steps": [
+      "Cook spaghetti until al dente.",
+      "Saute onion and brown ground beef.",
+      "Add tomatoes and sauce, simmer.",
+      "Serve over pasta with parmesan."
+    ]
+  },
+  {
+    "id": "r-003",
+    "title": "Vegetarian Chili",
+    "servings": 6,
+    "cookTimeMins": 40,
+    "tags": ["vegetarian"],
+    "ingredients": [
+      { "name": "black beans", "quantity": 2, "unit": "cans", "category": "pantry" },
+      { "name": "kidney beans", "quantity": 1, "unit": "can", "category": "pantry" },
+      { "name": "bell pepper", "quantity": 1, "unit": "each", "category": "produce" },
+      { "name": "onion", "quantity": 1, "unit": "each", "category": "produce" },
+      { "name": "canned diced tomatoes", "quantity": 1, "unit": "can", "category": "pantry" },
+      { "name": "chili powder", "quantity": 1, "unit": "tbsp", "category": "pantry" }
+    ],
+    "steps": [
+      "Saute onion and pepper.",
+      "Add beans, tomatoes, and spices.",
+      "Simmer for 25 minutes.",
+      "Serve with toppings."
+    ]
+  },
+  {
+    "id": "r-004",
+    "title": "Tofu Coconut Curry",
+    "servings": 4,
+    "cookTimeMins": 30,
+    "tags": ["vegetarian", "dairy-free"],
+    "ingredients": [
+      { "name": "tofu", "quantity": 400, "unit": "g", "category": "pantry" },
+      { "name": "coconut milk", "quantity": 1, "unit": "can", "category": "pantry" },
+      { "name": "curry paste", "quantity": 2, "unit": "tbsp", "category": "pantry" },
+      { "name": "zucchini", "quantity": 1, "unit": "each", "category": "produce" },
+      { "name": "carrot", "quantity": 2, "unit": "each", "category": "produce" },
+      { "name": "rice", "quantity": 2, "unit": "cups", "category": "pantry" }
+    ],
+    "steps": [
+      "Cook rice.",
+      "Saute tofu and vegetables.",
+      "Add curry paste and coconut milk.",
+      "Simmer and serve over rice."
+    ]
+  },
+  {
+    "id": "r-005",
+    "title": "Salmon Rice Bowl",
+    "servings": 2,
+    "cookTimeMins": 20,
+    "ingredients": [
+      { "name": "salmon fillet", "quantity": 2, "unit": "pieces", "category": "meat" },
+      { "name": "rice", "quantity": 1, "unit": "cup", "category": "pantry" },
+      { "name": "cucumber", "quantity": 1, "unit": "each", "category": "produce" },
+      { "name": "soy sauce", "quantity": 2, "unit": "tbsp", "category": "pantry" },
+      { "name": "sesame oil", "quantity": 1, "unit": "tsp", "category": "pantry" }
+    ],
+    "steps": [
+      "Cook rice.",
+      "Pan-sear salmon.",
+      "Slice cucumber.",
+      "Serve salmon over rice with sauce."
+    ]
+  },
+  {
+    "id": "r-006",
+    "title": "Turkey Tacos",
+    "servings": 4,
+    "cookTimeMins": 25,
+    "ingredients": [
+      { "name": "ground turkey", "quantity": 1, "unit": "lb", "category": "meat" },
+      { "name": "tortillas", "quantity": 8, "unit": "each", "category": "pantry" },
+      { "name": "lettuce", "quantity": 1, "unit": "head", "category": "produce" },
+      { "name": "tomato", "quantity": 2, "unit": "each", "category": "produce" },
+      { "name": "cheddar cheese", "quantity": 1, "unit": "cup", "category": "dairy" }
+    ],
+    "steps": [
+      "Brown turkey with seasoning.",
+      "Warm tortillas.",
+      "Assemble with lettuce, tomato, and cheese."
+    ]
+  },
+  {
+    "id": "r-007",
+    "title": "Beef and Potato Stew",
+    "servings": 6,
+    "cookTimeMins": 90,
+    "ingredients": [
+      { "name": "beef stew cubes", "quantity": 1.5, "unit": "lb", "category": "meat" },
+      { "name": "potatoes", "quantity": 4, "unit": "each", "category": "produce" },
+      { "name": "carrots", "quantity": 3, "unit": "each", "category": "produce" },
+      { "name": "onion", "quantity": 1, "unit": "each", "category": "produce" },
+      { "name": "beef broth", "quantity": 4, "unit": "cups", "category": "pantry" }
+    ],
+    "steps": [
+      "Brown beef.",
+      "Add vegetables and broth.",
+      "Simmer until tender."
+    ]
+  },
+  {
+    "id": "r-008",
+    "title": "Lentil Soup",
+    "servings": 6,
+    "cookTimeMins": 45,
+    "tags": ["vegetarian"],
+    "ingredients": [
+      { "name": "lentils", "quantity": 1, "unit": "cup", "category": "pantry" },
+      { "name": "carrots", "quantity": 2, "unit": "each", "category": "produce" },
+      { "name": "celery", "quantity": 2, "unit": "stalks", "category": "produce" },
+      { "name": "onion", "quantity": 1, "unit": "each", "category": "produce" },
+      { "name": "vegetable broth", "quantity": 4, "unit": "cups", "category": "pantry" }
+    ],
+    "steps": [
+      "Saute vegetables.",
+      "Add lentils and broth.",
+      "Simmer until lentils are tender."
+    ]
+  },
+  {
+    "id": "r-009",
+    "title": "Chicken Parmesan",
+    "servings": 4,
+    "cookTimeMins": 40,
+    "ingredients": [
+      { "name": "chicken breast", "quantity": 1.5, "unit": "lb", "category": "meat" },
+      { "name": "breadcrumbs", "quantity": 1, "unit": "cup", "category": "pantry" },
+      { "name": "mozzarella", "quantity": 1, "unit": "cup", "category": "dairy" },
+      { "name": "tomato sauce", "quantity": 1, "unit": "jar", "category": "pantry" },
+      { "name": "spaghetti", "quantity": 0.5, "unit": "lb", "category": "pantry" }
+    ],
+    "steps": [
+      "Bread and bake chicken.",
+      "Top with sauce and cheese.",
+      "Serve over pasta."
+    ]
+  },
+  {
+    "id": "r-010",
+    "title": "Shrimp Fried Rice",
+    "servings": 4,
+    "cookTimeMins": 20,
+    "ingredients": [
+      { "name": "frozen shrimp", "quantity": 400, "unit": "g", "category": "frozen" },
+      { "name": "rice", "quantity": 2, "unit": "cups", "category": "pantry" },
+      { "name": "frozen mixed vegetables", "quantity": 2, "unit": "cups", "category": "frozen" },
+      { "name": "eggs", "quantity": 2, "unit": "each", "category": "dairy" },
+      { "name": "soy sauce", "quantity": 3, "unit": "tbsp", "category": "pantry" }
+    ],
+    "steps": [
+      "Cook rice and cool.",
+      "Stir-fry shrimp and vegetables.",
+      "Add rice and soy sauce.",
+      "Scramble eggs in pan and mix."
+    ]
+  },
+  {
+    "id": "r-011",
+    "title": "Veggie Omelet",
+    "servings": 2,
+    "cookTimeMins": 15,
+    "tags": ["vegetarian"],
+    "ingredients": [
+      { "name": "eggs", "quantity": 4, "unit": "each", "category": "dairy" },
+      { "name": "spinach", "quantity": 1, "unit": "cup", "category": "produce" },
+      { "name": "mushrooms", "quantity": 1, "unit": "cup", "category": "produce" },
+      { "name": "cheddar cheese", "quantity": 0.5, "unit": "cup", "category": "dairy" }
+    ],
+    "steps": [
+      "Saute vegetables.",
+      "Pour eggs over veggies.",
+      "Add cheese and fold."
+    ]
+  },
+  {
+    "id": "r-012",
+    "title": "Pork Chops with Apples",
+    "servings": 4,
+    "cookTimeMins": 30,
+    "ingredients": [
+      { "name": "pork chops", "quantity": 4, "unit": "each", "category": "meat" },
+      { "name": "apples", "quantity": 2, "unit": "each", "category": "produce" },
+      { "name": "butter", "quantity": 2, "unit": "tbsp", "category": "dairy" },
+      { "name": "onion", "quantity": 1, "unit": "each", "category": "produce" }
+    ],
+    "steps": [
+      "Brown pork chops.",
+      "Saute onions and apples in butter.",
+      "Serve together."
+    ]
+  },
+  {
+    "id": "r-013",
+    "title": "Chickpea Salad",
+    "servings": 4,
+    "cookTimeMins": 15,
+    "tags": ["vegetarian"],
+    "ingredients": [
+      { "name": "chickpeas", "quantity": 1, "unit": "can", "category": "pantry" },
+      { "name": "cucumber", "quantity": 1, "unit": "each", "category": "produce" },
+      { "name": "tomato", "quantity": 2, "unit": "each", "category": "produce" },
+      { "name": "feta", "quantity": 0.5, "unit": "cup", "category": "dairy" },
+      { "name": "olive oil", "quantity": 2, "unit": "tbsp", "category": "pantry" }
+    ],
+    "steps": [
+      "Combine chopped vegetables and chickpeas.",
+      "Toss with olive oil and feta."
+    ]
+  },
+  {
+    "id": "r-014",
+    "title": "Chicken Noodle Soup",
+    "servings": 6,
+    "cookTimeMins": 50,
+    "ingredients": [
+      { "name": "chicken thighs", "quantity": 1.5, "unit": "lb", "category": "meat" },
+      { "name": "carrots", "quantity": 3, "unit": "each", "category": "produce" },
+      { "name": "celery", "quantity": 2, "unit": "stalks", "category": "produce" },
+      { "name": "onion", "quantity": 1, "unit": "each", "category": "produce" },
+      { "name": "egg noodles", "quantity": 2, "unit": "cups", "category": "pantry" }
+    ],
+    "steps": [
+      "Simmer chicken with vegetables.",
+      "Shred chicken and add noodles.",
+      "Cook until noodles are tender."
+    ]
+  },
+  {
+    "id": "r-015",
+    "title": "Pasta Primavera",
+    "servings": 4,
+    "cookTimeMins": 25,
+    "tags": ["vegetarian"],
+    "ingredients": [
+      { "name": "penne pasta", "quantity": 1, "unit": "lb", "category": "pantry" },
+      { "name": "zucchini", "quantity": 1, "unit": "each", "category": "produce" },
+      { "name": "bell pepper", "quantity": 1, "unit": "each", "category": "produce" },
+      { "name": "parmesan", "quantity": 0.5, "unit": "cup", "category": "dairy" },
+      { "name": "olive oil", "quantity": 2, "unit": "tbsp", "category": "pantry" }
+    ],
+    "steps": [
+      "Cook pasta.",
+      "Saute vegetables.",
+      "Toss pasta with vegetables and parmesan."
+    ]
+  },
+  {
+    "id": "r-016",
+    "title": "Beef Tacos",
+    "servings": 4,
+    "cookTimeMins": 20,
+    "ingredients": [
+      { "name": "ground beef", "quantity": 1, "unit": "lb", "category": "meat" },
+      { "name": "tortillas", "quantity": 8, "unit": "each", "category": "pantry" },
+      { "name": "lettuce", "quantity": 1, "unit": "head", "category": "produce" },
+      { "name": "tomato", "quantity": 2, "unit": "each", "category": "produce" },
+      { "name": "cheddar cheese", "quantity": 1, "unit": "cup", "category": "dairy" }
+    ],
+    "steps": [
+      "Brown beef with seasoning.",
+      "Warm tortillas.",
+      "Assemble tacos with toppings."
+    ]
+  },
+  {
+    "id": "r-017",
+    "title": "Vegetable Fried Rice",
+    "servings": 4,
+    "cookTimeMins": 20,
+    "tags": ["vegetarian"],
+    "ingredients": [
+      { "name": "rice", "quantity": 2, "unit": "cups", "category": "pantry" },
+      { "name": "frozen mixed vegetables", "quantity": 2, "unit": "cups", "category": "frozen" },
+      { "name": "eggs", "quantity": 2, "unit": "each", "category": "dairy" },
+      { "name": "soy sauce", "quantity": 3, "unit": "tbsp", "category": "pantry" }
+    ],
+    "steps": [
+      "Cook rice and cool.",
+      "Stir-fry vegetables.",
+      "Add rice and soy sauce.",
+      "Scramble eggs and mix."
+    ]
+  },
+  {
+    "id": "r-018",
+    "title": "Baked Salmon with Potatoes",
+    "servings": 4,
+    "cookTimeMins": 35,
+    "ingredients": [
+      { "name": "salmon fillet", "quantity": 4, "unit": "pieces", "category": "meat" },
+      { "name": "potatoes", "quantity": 4, "unit": "each", "category": "produce" },
+      { "name": "olive oil", "quantity": 2, "unit": "tbsp", "category": "pantry" },
+      { "name": "lemon", "quantity": 1, "unit": "each", "category": "produce" }
+    ],
+    "steps": [
+      "Roast potatoes with oil.",
+      "Bake salmon with lemon.",
+      "Serve together."
+    ]
+  },
+  {
+    "id": "r-019",
+    "title": "Tofu Stir-Fry",
+    "servings": 4,
+    "cookTimeMins": 20,
+    "tags": ["vegetarian", "dairy-free"],
+    "ingredients": [
+      { "name": "tofu", "quantity": 400, "unit": "g", "category": "pantry" },
+      { "name": "broccoli", "quantity": 1, "unit": "head", "category": "produce" },
+      { "name": "carrot", "quantity": 2, "unit": "each", "category": "produce" },
+      { "name": "soy sauce", "quantity": 3, "unit": "tbsp", "category": "pantry" },
+      { "name": "rice", "quantity": 2, "unit": "cups", "category": "pantry" }
+    ],
+    "steps": [
+      "Cook rice.",
+      "Stir-fry tofu and vegetables.",
+      "Add soy sauce and serve."
+    ]
+  },
+  {
+    "id": "r-020",
+    "title": "Chicken Fajita Bowls",
+    "servings": 4,
+    "cookTimeMins": 30,
+    "ingredients": [
+      { "name": "chicken breast", "quantity": 1.5, "unit": "lb", "category": "meat" },
+      { "name": "bell pepper", "quantity": 2, "unit": "each", "category": "produce" },
+      { "name": "onion", "quantity": 1, "unit": "each", "category": "produce" },
+      { "name": "rice", "quantity": 2, "unit": "cups", "category": "pantry" },
+      { "name": "lime", "quantity": 1, "unit": "each", "category": "produce" }
+    ],
+    "steps": [
+      "Cook rice.",
+      "Saute chicken with peppers and onion.",
+      "Serve over rice with lime."
+    ]
+  },
+  {
+    "id": "r-021",
+    "title": "Sausage and Peppers",
+    "servings": 4,
+    "cookTimeMins": 25,
+    "ingredients": [
+      { "name": "smoked sausage", "quantity": 1, "unit": "pack", "category": "meat" },
+      { "name": "bell pepper", "quantity": 2, "unit": "each", "category": "produce" },
+      { "name": "onion", "quantity": 1, "unit": "each", "category": "produce" },
+      { "name": "tomato sauce", "quantity": 0.5, "unit": "cup", "category": "pantry" }
+    ],
+    "steps": [
+      "Brown sausage.",
+      "Saute peppers and onions.",
+      "Add sauce and simmer."
+    ]
+  },
+  {
+    "id": "r-022",
+    "title": "Greek Chicken Salad",
+    "servings": 4,
+    "cookTimeMins": 20,
+    "ingredients": [
+      { "name": "chicken breast", "quantity": 1, "unit": "lb", "category": "meat" },
+      { "name": "romaine lettuce", "quantity": 1, "unit": "head", "category": "produce" },
+      { "name": "cucumber", "quantity": 1, "unit": "each", "category": "produce" },
+      { "name": "tomato", "quantity": 2, "unit": "each", "category": "produce" },
+      { "name": "feta", "quantity": 0.5, "unit": "cup", "category": "dairy" }
+    ],
+    "steps": [
+      "Grill chicken and slice.",
+      "Combine veggies and feta.",
+      "Top with chicken and dressing."
+    ]
+  },
+  {
+    "id": "r-023",
+    "title": "Mushroom Risotto",
+    "servings": 4,
+    "cookTimeMins": 45,
+    "tags": ["vegetarian"],
+    "ingredients": [
+      { "name": "arborio rice", "quantity": 1.5, "unit": "cups", "category": "pantry" },
+      { "name": "mushrooms", "quantity": 2, "unit": "cups", "category": "produce" },
+      { "name": "onion", "quantity": 1, "unit": "each", "category": "produce" },
+      { "name": "vegetable broth", "quantity": 4, "unit": "cups", "category": "pantry" },
+      { "name": "parmesan", "quantity": 0.5, "unit": "cup", "category": "dairy" }
+    ],
+    "steps": [
+      "Saute onion and mushrooms.",
+      "Add rice and broth gradually.",
+      "Stir until creamy and add parmesan."
+    ]
+  },
+  {
+    "id": "r-024",
+    "title": "Chicken and Broccoli Alfredo",
+    "servings": 4,
+    "cookTimeMins": 30,
+    "ingredients": [
+      { "name": "chicken breast", "quantity": 1, "unit": "lb", "category": "meat" },
+      { "name": "broccoli", "quantity": 1, "unit": "head", "category": "produce" },
+      { "name": "fettuccine", "quantity": 1, "unit": "lb", "category": "pantry" },
+      { "name": "cream", "quantity": 1, "unit": "cup", "category": "dairy" },
+      { "name": "parmesan", "quantity": 0.5, "unit": "cup", "category": "dairy" }
+    ],
+    "steps": [
+      "Cook pasta and broccoli.",
+      "Saute chicken.",
+      "Simmer cream and parmesan.",
+      "Combine and serve."
+    ]
+  },
+  {
+    "id": "r-025",
+    "title": "Veggie Quesadillas",
+    "servings": 4,
+    "cookTimeMins": 15,
+    "tags": ["vegetarian"],
+    "ingredients": [
+      { "name": "tortillas", "quantity": 8, "unit": "each", "category": "pantry" },
+      { "name": "cheddar cheese", "quantity": 1, "unit": "cup", "category": "dairy" },
+      { "name": "bell pepper", "quantity": 1, "unit": "each", "category": "produce" },
+      { "name": "onion", "quantity": 1, "unit": "each", "category": "produce" },
+      { "name": "black beans", "quantity": 1, "unit": "can", "category": "pantry" }
+    ],
+    "steps": [
+      "Saute peppers and onion.",
+      "Fill tortillas with cheese and beans.",
+      "Cook until golden."
+    ]
+  },
+  {
+    "id": "r-026",
+    "title": "Pork Fried Rice",
+    "servings": 4,
+    "cookTimeMins": 25,
+    "ingredients": [
+      { "name": "pork tenderloin", "quantity": 1, "unit": "lb", "category": "meat" },
+      { "name": "rice", "quantity": 2, "unit": "cups", "category": "pantry" },
+      { "name": "frozen mixed vegetables", "quantity": 2, "unit": "cups", "category": "frozen" },
+      { "name": "eggs", "quantity": 2, "unit": "each", "category": "dairy" },
+      { "name": "soy sauce", "quantity": 3, "unit": "tbsp", "category": "pantry" }
+    ],
+    "steps": [
+      "Cook rice and cool.",
+      "Stir-fry pork and vegetables.",
+      "Add rice, soy sauce, and eggs."
+    ]
+  },
+  {
+    "id": "r-027",
+    "title": "Chili Mac",
+    "servings": 6,
+    "cookTimeMins": 35,
+    "ingredients": [
+      { "name": "ground beef", "quantity": 1, "unit": "lb", "category": "meat" },
+      { "name": "macaroni", "quantity": 1, "unit": "lb", "category": "pantry" },
+      { "name": "canned diced tomatoes", "quantity": 1, "unit": "can", "category": "pantry" },
+      { "name": "kidney beans", "quantity": 1, "unit": "can", "category": "pantry" },
+      { "name": "cheddar cheese", "quantity": 1, "unit": "cup", "category": "dairy" }
+    ],
+    "steps": [
+      "Cook macaroni.",
+      "Brown beef and add tomatoes and beans.",
+      "Combine with pasta and top with cheese."
+    ]
+  },
+  {
+    "id": "r-028",
+    "title": "Sheet Pan Chicken and Veg",
+    "servings": 4,
+    "cookTimeMins": 35,
+    "ingredients": [
+      { "name": "chicken thighs", "quantity": 1.5, "unit": "lb", "category": "meat" },
+      { "name": "potatoes", "quantity": 4, "unit": "each", "category": "produce" },
+      { "name": "carrots", "quantity": 3, "unit": "each", "category": "produce" },
+      { "name": "olive oil", "quantity": 2, "unit": "tbsp", "category": "pantry" }
+    ],
+    "steps": [
+      "Toss chicken and vegetables with oil.",
+      "Roast until cooked through."
+    ]
+  },
+  {
+    "id": "r-029",
+    "title": "Bean and Rice Burrito Bowl",
+    "servings": 4,
+    "cookTimeMins": 25,
+    "tags": ["vegetarian"],
+    "ingredients": [
+      { "name": "rice", "quantity": 2, "unit": "cups", "category": "pantry" },
+      { "name": "black beans", "quantity": 1, "unit": "can", "category": "pantry" },
+      { "name": "corn", "quantity": 1, "unit": "can", "category": "pantry" },
+      { "name": "tomato", "quantity": 2, "unit": "each", "category": "produce" },
+      { "name": "lettuce", "quantity": 1, "unit": "head", "category": "produce" }
+    ],
+    "steps": [
+      "Cook rice.",
+      "Warm beans and corn.",
+      "Assemble bowls with fresh toppings."
+    ]
+  },
+  {
+    "id": "r-030",
+    "title": "Turkey Meatballs",
+    "servings": 4,
+    "cookTimeMins": 35,
+    "ingredients": [
+      { "name": "ground turkey", "quantity": 1, "unit": "lb", "category": "meat" },
+      { "name": "breadcrumbs", "quantity": 0.5, "unit": "cup", "category": "pantry" },
+      { "name": "eggs", "quantity": 1, "unit": "each", "category": "dairy" },
+      { "name": "tomato sauce", "quantity": 1, "unit": "jar", "category": "pantry" },
+      { "name": "spaghetti", "quantity": 0.5, "unit": "lb", "category": "pantry" }
+    ],
+    "steps": [
+      "Mix turkey with breadcrumbs and egg.",
+      "Bake meatballs.",
+      "Simmer in sauce and serve with pasta."
+    ]
+  }
+]

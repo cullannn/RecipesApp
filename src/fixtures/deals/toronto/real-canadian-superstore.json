@@ -1,0 +1,112 @@
+[
+  {
+    "id": "rcs-001",
+    "title": "Pork shoulder roast",
+    "store": "Real Canadian Superstore",
+    "price": 3.99,
+    "unit": "lb",
+    "category": "meat",
+    "validFrom": "2026-01-01",
+    "validTo": "2026-01-07",
+    "location": "M5V"
+  },
+  {
+    "id": "rcs-002",
+    "title": "Chicken drumsticks",
+    "store": "Real Canadian Superstore",
+    "price": 2.49,
+    "unit": "lb",
+    "category": "meat",
+    "validFrom": "2026-01-01",
+    "validTo": "2026-01-07",
+    "location": "M5V"
+  },
+  {
+    "id": "rcs-003",
+    "title": "Cheddar cheese block",
+    "store": "Real Canadian Superstore",
+    "price": 4.99,
+    "unit": "400 g",
+    "category": "dairy",
+    "validFrom": "2026-01-01",
+    "validTo": "2026-01-07",
+    "location": "M5V"
+  },
+  {
+    "id": "rcs-004",
+    "title": "Bell peppers, assorted",
+    "store": "Real Canadian Superstore",
+    "price": 3.99,
+    "unit": "4 pack",
+    "category": "produce",
+    "validFrom": "2026-01-01",
+    "validTo": "2026-01-07",
+    "location": "M5V"
+  },
+  {
+    "id": "rcs-005",
+    "title": "Russet potatoes",
+    "store": "Real Canadian Superstore",
+    "price": 4.49,
+    "unit": "10 lb bag",
+    "category": "produce",
+    "validFrom": "2026-01-01",
+    "validTo": "2026-01-07",
+    "location": "M5V"
+  },
+  {
+    "id": "rcs-006",
+    "title": "Canned diced tomatoes",
+    "store": "Real Canadian Superstore",
+    "price": 1.19,
+    "unit": "796 ml",
+    "category": "pantry",
+    "validFrom": "2026-01-01",
+    "validTo": "2026-01-07",
+    "location": "M5V"
+  },
+  {
+    "id": "rcs-007",
+    "title": "Penne pasta",
+    "store": "Real Canadian Superstore",
+    "price": 1.49,
+    "unit": "900 g",
+    "category": "pantry",
+    "validFrom": "2026-01-01",
+    "validTo": "2026-01-07",
+    "location": "M5V"
+  },
+  {
+    "id": "rcs-008",
+    "title": "Frozen chicken nuggets",
+    "store": "Real Canadian Superstore",
+    "price": 5.99,
+    "unit": "1 kg",
+    "category": "frozen",
+    "validFrom": "2026-01-01",
+    "validTo": "2026-01-07",
+    "location": "M5V"
+  },
+  {
+    "id": "rcs-009",
+    "title": "Cola, 12 pack",
+    "store": "Real Canadian Superstore",
+    "price": 6.49,
+    "unit": "12 x 355 ml",
+    "category": "beverages",
+    "validFrom": "2026-01-01",
+    "validTo": "2026-01-07",
+    "location": "M5V"
+  },
+  {
+    "id": "rcs-010",
+    "title": "Laundry detergent",
+    "store": "Real Canadian Superstore",
+    "price": 9.99,
+    "unit": "1.47 L",
+    "category": "household",
+    "validFrom": "2026-01-01",
+    "validTo": "2026-01-07",
+    "location": "M5V"
+  }
+]

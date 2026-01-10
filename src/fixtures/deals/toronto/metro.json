@@ -1,0 +1,112 @@
+[
+  {
+    "id": "mt-001",
+    "title": "Ground turkey",
+    "store": "Metro",
+    "price": 4.99,
+    "unit": "lb",
+    "category": "meat",
+    "validFrom": "2026-01-01",
+    "validTo": "2026-01-07",
+    "location": "M5V"
+  },
+  {
+    "id": "mt-002",
+    "title": "Pork chops",
+    "store": "Metro",
+    "price": 5.49,
+    "unit": "lb",
+    "category": "meat",
+    "validFrom": "2026-01-01",
+    "validTo": "2026-01-07",
+    "location": "M5V"
+  },
+  {
+    "id": "mt-003",
+    "title": "Butter",
+    "store": "Metro",
+    "price": 4.49,
+    "unit": "454 g",
+    "category": "dairy",
+    "validFrom": "2026-01-01",
+    "validTo": "2026-01-07",
+    "location": "M5V"
+  },
+  {
+    "id": "mt-004",
+    "title": "Broccoli crowns",
+    "store": "Metro",
+    "price": 1.99,
+    "unit": "lb",
+    "category": "produce",
+    "validFrom": "2026-01-01",
+    "validTo": "2026-01-07",
+    "location": "M5V"
+  },
+  {
+    "id": "mt-005",
+    "title": "Cucumbers",
+    "store": "Metro",
+    "price": 1.29,
+    "unit": "each",
+    "category": "produce",
+    "validFrom": "2026-01-01",
+    "validTo": "2026-01-07",
+    "location": "M5V"
+  },
+  {
+    "id": "mt-006",
+    "title": "Chickpeas",
+    "store": "Metro",
+    "price": 0.99,
+    "unit": "540 ml",
+    "category": "pantry",
+    "validFrom": "2026-01-01",
+    "validTo": "2026-01-07",
+    "location": "M5V"
+  },
+  {
+    "id": "mt-007",
+    "title": "Couscous",
+    "store": "Metro",
+    "price": 2.49,
+    "unit": "900 g",
+    "category": "pantry",
+    "validFrom": "2026-01-01",
+    "validTo": "2026-01-07",
+    "location": "M5V"
+  },
+  {
+    "id": "mt-008",
+    "title": "Frozen pizza",
+    "store": "Metro",
+    "price": 4.99,
+    "unit": "each",
+    "category": "frozen",
+    "validFrom": "2026-01-01",
+    "validTo": "2026-01-07",
+    "location": "M5V"
+  },
+  {
+    "id": "mt-009",
+    "title": "Granola bars",
+    "store": "Metro",
+    "price": 2.99,
+    "unit": "6 pack",
+    "category": "snacks",
+    "validFrom": "2026-01-01",
+    "validTo": "2026-01-07",
+    "location": "M5V"
+  },
+  {
+    "id": "mt-010",
+    "title": "Sparkling water",
+    "store": "Metro",
+    "price": 3.99,
+    "unit": "12 x 355 ml",
+    "category": "beverages",
+    "validFrom": "2026-01-01",
+    "validTo": "2026-01-07",
+    "location": "M5V"
+  }
+]

@@ -1,0 +1,112 @@
+[
+  {
+    "id": "wm-001",
+    "title": "Sirloin steak",
+    "store": "Walmart",
+    "price": 7.99,
+    "unit": "lb",
+    "category": "meat",
+    "validFrom": "2026-01-01",
+    "validTo": "2026-01-07",
+    "location": "M5V"
+  },
+  {
+    "id": "wm-002",
+    "title": "Whole chicken",
+    "store": "Walmart",
+    "price": 2.49,
+    "unit": "lb",
+    "category": "meat",
+    "validFrom": "2026-01-01",
+    "validTo": "2026-01-07",
+    "location": "M5V"
+  },
+  {
+    "id": "wm-003",
+    "title": "Cheese slices",
+    "store": "Walmart",
+    "price": 3.49,
+    "unit": "22 slices",
+    "category": "dairy",
+    "validFrom": "2026-01-01",
+    "validTo": "2026-01-07",
+    "location": "M5V"
+  },
+  {
+    "id": "wm-004",
+    "title": "Iceberg lettuce",
+    "store": "Walmart",
+    "price": 1.49,
+    "unit": "each",
+    "category": "produce",
+    "validFrom": "2026-01-01",
+    "validTo": "2026-01-07",
+    "location": "M5V"
+  },
+  {
+    "id": "wm-005",
+    "title": "Bananas",
+    "store": "Walmart",
+    "price": 0.59,
+    "unit": "lb",
+    "category": "produce",
+    "validFrom": "2026-01-01",
+    "validTo": "2026-01-07",
+    "location": "M5V"
+  },
+  {
+    "id": "wm-006",
+    "title": "Pasta sauce",
+    "store": "Walmart",
+    "price": 2.29,
+    "unit": "650 ml",
+    "category": "pantry",
+    "validFrom": "2026-01-01",
+    "validTo": "2026-01-07",
+    "location": "M5V"
+  },
+  {
+    "id": "wm-007",
+    "title": "Peanut butter",
+    "store": "Walmart",
+    "price": 3.99,
+    "unit": "1 kg",
+    "category": "pantry",
+    "validFrom": "2026-01-01",
+    "validTo": "2026-01-07",
+    "location": "M5V"
+  },
+  {
+    "id": "wm-008",
+    "title": "Frozen waffles",
+    "store": "Walmart",
+    "price": 2.99,
+    "unit": "10 pack",
+    "category": "frozen",
+    "validFrom": "2026-01-01",
+    "validTo": "2026-01-07",
+    "location": "M5V"
+  },
+  {
+    "id": "wm-009",
+    "title": "Chocolate cookies",
+    "store": "Walmart",
+    "price": 2.49,
+    "unit": "300 g",
+    "category": "snacks",
+    "validFrom": "2026-01-01",
+    "validTo": "2026-01-07",
+    "location": "M5V"
+  },
+  {
+    "id": "wm-010",
+    "title": "Paper towels",
+    "store": "Walmart",
+    "price": 6.99,
+    "unit": "6 rolls",
+    "category": "household",
+    "validFrom": "2026-01-01",
+    "validTo": "2026-01-07",
+    "location": "M5V"
+  }
+]

@@ -1,0 +1,112 @@
+[
+  {
+    "id": "fb-001",
+    "title": "Beef stew cubes",
+    "store": "Food Basics",
+    "price": 5.99,
+    "unit": "lb",
+    "category": "meat",
+    "validFrom": "2026-01-01",
+    "validTo": "2026-01-07",
+    "location": "M5V"
+  },
+  {
+    "id": "fb-002",
+    "title": "Smoked sausage",
+    "store": "Food Basics",
+    "price": 3.99,
+    "unit": "450 g",
+    "category": "meat",
+    "validFrom": "2026-01-01",
+    "validTo": "2026-01-07",
+    "location": "M5V"
+  },
+  {
+    "id": "fb-003",
+    "title": "Cottage cheese",
+    "store": "Food Basics",
+    "price": 2.99,
+    "unit": "500 g",
+    "category": "dairy",
+    "validFrom": "2026-01-01",
+    "validTo": "2026-01-07",
+    "location": "M5V"
+  },
+  {
+    "id": "fb-004",
+    "title": "Green beans",
+    "store": "Food Basics",
+    "price": 2.49,
+    "unit": "lb",
+    "category": "produce",
+    "validFrom": "2026-01-01",
+    "validTo": "2026-01-07",
+    "location": "M5V"
+  },
+  {
+    "id": "fb-005",
+    "title": "Apples, Gala",
+    "store": "Food Basics",
+    "price": 3.49,
+    "unit": "3 lb bag",
+    "category": "produce",
+    "validFrom": "2026-01-01",
+    "validTo": "2026-01-07",
+    "location": "M5V"
+  },
+  {
+    "id": "fb-006",
+    "title": "Canned corn",
+    "store": "Food Basics",
+    "price": 0.89,
+    "unit": "398 ml",
+    "category": "pantry",
+    "validFrom": "2026-01-01",
+    "validTo": "2026-01-07",
+    "location": "M5V"
+  },
+  {
+    "id": "fb-007",
+    "title": "Tortillas",
+    "store": "Food Basics",
+    "price": 2.49,
+    "unit": "10 pack",
+    "category": "pantry",
+    "validFrom": "2026-01-01",
+    "validTo": "2026-01-07",
+    "location": "M5V"
+  },
+  {
+    "id": "fb-008",
+    "title": "Frozen berries",
+    "store": "Food Basics",
+    "price": 4.99,
+    "unit": "600 g",
+    "category": "frozen",
+    "validFrom": "2026-01-01",
+    "validTo": "2026-01-07",
+    "location": "M5V"
+  },
+  {
+    "id": "fb-009",
+    "title": "Pretzels",
+    "store": "Food Basics",
+    "price": 2.29,
+    "unit": "400 g",
+    "category": "snacks",
+    "validFrom": "2026-01-01",
+    "validTo": "2026-01-07",
+    "location": "M5V"
+  },
+  {
+    "id": "fb-010",
+    "title": "Apple juice",
+    "store": "Food Basics",
+    "price": 2.99,
+    "unit": "1.89 L",
+    "category": "beverages",
+    "validFrom": "2026-01-01",
+    "validTo": "2026-01-07",
+    "location": "M5V"
+  }
+]

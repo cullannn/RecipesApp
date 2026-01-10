@@ -1,0 +1,112 @@
+[
+  {
+    "id": "lg-001",
+    "title": "Chicken sausage",
+    "store": "Longo's",
+    "price": 5.99,
+    "unit": "500 g",
+    "category": "meat",
+    "validFrom": "2026-01-01",
+    "validTo": "2026-01-07",
+    "location": "M5V"
+  },
+  {
+    "id": "lg-002",
+    "title": "Pork tenderloin",
+    "store": "Longo's",
+    "price": 6.99,
+    "unit": "lb",
+    "category": "meat",
+    "validFrom": "2026-01-01",
+    "validTo": "2026-01-07",
+    "location": "M5V"
+  },
+  {
+    "id": "lg-003",
+    "title": "Parmesan cheese",
+    "store": "Longo's",
+    "price": 4.99,
+    "unit": "200 g",
+    "category": "dairy",
+    "validFrom": "2026-01-01",
+    "validTo": "2026-01-07",
+    "location": "M5V"
+  },
+  {
+    "id": "lg-004",
+    "title": "Asparagus",
+    "store": "Longo's",
+    "price": 3.49,
+    "unit": "lb",
+    "category": "produce",
+    "validFrom": "2026-01-01",
+    "validTo": "2026-01-07",
+    "location": "M5V"
+  },
+  {
+    "id": "lg-005",
+    "title": "Strawberries",
+    "store": "Longo's",
+    "price": 3.99,
+    "unit": "454 g",
+    "category": "produce",
+    "validFrom": "2026-01-01",
+    "validTo": "2026-01-07",
+    "location": "M5V"
+  },
+  {
+    "id": "lg-006",
+    "title": "Whole wheat bread",
+    "store": "Longo's",
+    "price": 2.99,
+    "unit": "675 g",
+    "category": "pantry",
+    "validFrom": "2026-01-01",
+    "validTo": "2026-01-07",
+    "location": "M5V"
+  },
+  {
+    "id": "lg-007",
+    "title": "Quinoa",
+    "store": "Longo's",
+    "price": 6.49,
+    "unit": "900 g",
+    "category": "pantry",
+    "validFrom": "2026-01-01",
+    "validTo": "2026-01-07",
+    "location": "M5V"
+  },
+  {
+    "id": "lg-008",
+    "title": "Frozen spinach",
+    "store": "Longo's",
+    "price": 2.79,
+    "unit": "500 g",
+    "category": "frozen",
+    "validFrom": "2026-01-01",
+    "validTo": "2026-01-07",
+    "location": "M5V"
+  },
+  {
+    "id": "lg-009",
+    "title": "Dark chocolate bar",
+    "store": "Longo's",
+    "price": 2.49,
+    "unit": "100 g",
+    "category": "snacks",
+    "validFrom": "2026-01-01",
+    "validTo": "2026-01-07",
+    "location": "M5V"
+  },
+  {
+    "id": "lg-010",
+    "title": "Kombucha",
+    "store": "Longo's",
+    "price": 3.49,
+    "unit": "473 ml",
+    "category": "beverages",
+    "validFrom": "2026-01-01",
+    "validTo": "2026-01-07",
+    "location": "M5V"
+  }
+]
