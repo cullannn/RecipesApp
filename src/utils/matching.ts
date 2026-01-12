@@ -24,6 +24,61 @@ const STOP_TOKENS = new Set([
   'diced',
   'minced',
   'ground',
+  'organic',
+  'baby',
+  'english',
+  'green',
+  'red',
+  'white',
+  'yellow',
+  'golden',
+  'whole',
+  'seedless',
+  'sweet',
+  'value',
+  'jumbo',
+  'mini',
+  'premium',
+  'select',
+  'choice',
+  'shoulder',
+  'loin',
+  'rib',
+  'ribs',
+  'chop',
+  'chops',
+  'breast',
+  'thigh',
+  'thighs',
+  'leg',
+  'steak',
+  'roast',
+  'tenderloin',
+  'sirloin',
+  'flank',
+  'round',
+  'brisket',
+  'chuck',
+]);
+
+const BLOCKLIST_TOKENS = new Set([
+  'maker',
+  'appliance',
+  'blender',
+  'mixer',
+  'kettle',
+  'toaster',
+  'microwave',
+  'oven',
+  'airfryer',
+  'fryer',
+  'cookware',
+  'kitchenware',
+  'utensil',
+  'cutlery',
+  'knife',
+  'skillet',
+  'wok',
 ]);
 
 function filterTokens(tokens: string[]): string[] {
@@ -31,22 +86,29 @@ function filterTokens(tokens: string[]): string[] {
 }
 
 export function matchDealToIngredient(deal: DealItem, ingredientName: string): boolean {
-  const dealName = normalizeName(deal.title);
-  const ingredient = normalizeName(ingredientName);
-  if (!dealName || !ingredient) {
+  const dealTokensRaw = normalizeTokens(deal.title);
+  const ingredientTokensRaw = normalizeTokens(ingredientName);
+  if (dealTokensRaw.length === 0 || ingredientTokensRaw.length === 0) {
     return false;
   }
-  if (dealName.includes(ingredient) || ingredient.includes(dealName)) {
-    return true;
+  if (dealTokensRaw.some((token) => BLOCKLIST_TOKENS.has(token))) {
+    return false;
   }
-  const dealTokens = filterTokens(normalizeTokens(deal.title));
-  const ingredientTokens = filterTokens(normalizeTokens(ingredientName));
+  const dealTokens = filterTokens(dealTokensRaw);
+  const ingredientTokens = filterTokens(ingredientTokensRaw);
   if (dealTokens.length === 0 || ingredientTokens.length === 0) {
     return false;
   }
   const dealSet = new Set(dealTokens);
+  if (ingredientTokens.length === 1) {
+    const target = ingredientTokens[0];
+    if (!dealSet.has(target)) {
+      return false;
+    }
+    return dealTokens.length === 1;
+  }
   const shared = ingredientTokens.filter((token) => dealSet.has(token));
-  return shared.length >= 1;
+  return shared.length >= ingredientTokens.length;
 }
 
 export function getRecipeDealMatches(recipe: Recipe, deals: DealItem[]): DealItem[] {

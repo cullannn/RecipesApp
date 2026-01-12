@@ -139,7 +139,7 @@ function formatScaledQuantity(
 
 export default function PlanScreen() {
   const recipes = useRecipes();
-  const { postalCode, dietaryPreferences, householdSize } = usePreferencesStore();
+  const { postalCode, dietaryPreferences, householdSize, favoriteStores } = usePreferencesStore();
   const dealsQuery = useDeals({ postalCode });
   const { items: groceryItems, planId, setItems, toggleChecked } = useGroceryListStore();
   const {
@@ -261,6 +261,12 @@ export default function PlanScreen() {
           setGeneratingMode(null);
           return;
         }
+        if (generated.length < mealsRequested) {
+          const generatedIds = new Set(generated.map((recipe) => recipe.id));
+          const fallbackPool = recipes.filter((recipe) => !generatedIds.has(recipe.id));
+          const needed = mealsRequested - generated.length;
+          generated.push(...fallbackPool.slice(0, needed));
+        }
         setAiRecipes(generated);
         recipesForPlan = generated;
         if (cuisineFallback && selectedCuisines.length > 0) {
@@ -295,6 +301,7 @@ export default function PlanScreen() {
       recipes: recipesForPlan,
       deals: dealsQuery.data ?? [],
       pinnedRecipeIds: Array.from(new Set([...pinnedRecipeIds, ...planPinnedIds])),
+      favoriteStores,
       constraints: {
         dietary: dietaryPreferences,
         cuisineThemes: selectedCuisines,
@@ -381,7 +388,47 @@ export default function PlanScreen() {
     const matchedDeals = scopedDeals.filter((deal) =>
       ingredientNames.some((name) => matchDealToIngredient(deal, name))
     );
-    return matchedDeals
+    const pantryStaples = [
+      'soy sauce',
+      'hoisin sauce',
+      'oyster sauce',
+      'fish sauce',
+      'salt',
+      'sugar',
+      'flour',
+      'oil',
+      'olive oil',
+      'vegetable oil',
+      'canola oil',
+      'sesame oil',
+      'vinegar',
+      'rice vinegar',
+      'black vinegar',
+      'rice',
+      'pasta',
+      'noodles',
+      'spice',
+      'seasoning',
+      'broth',
+      'stock',
+      'syrup',
+      'ketchup',
+      'mustard',
+      'mayo',
+      'mayonnaise',
+    ];
+    const filteredDeals = matchedDeals.filter((deal) => {
+      const category = deal.category?.toLowerCase() ?? '';
+      const title = deal.title.toLowerCase();
+      if (pantryStaples.some((staple) => title.includes(staple))) {
+        return false;
+      }
+      if (category === 'pantry') {
+        return false;
+      }
+      return true;
+    });
+    return filteredDeals
       .sort((a, b) => {
         if (b.price !== a.price) {
           return b.price - a.price;
@@ -390,6 +437,73 @@ export default function PlanScreen() {
       })
       .slice(0, 5);
   }, [plan, dealsQuery.data]);
+
+  const renderTopDealTitle = (title: string) => {
+    const quantityRegex = /[, ]+\d+(\.\d+)?(\s*-\s*\d+(\.\d+)?)?\s?(kg|g|lb|oz|l|ml|cl|pcs|ct|count|pack|pk|x)\b/gi;
+    const segments: Array<{ text: string; bold: boolean }> = [];
+    let lastIndex = 0;
+    let inParens = false;
+    const pushText = (text: string, bold: boolean) => {
+      if (text) {
+        segments.push({ text, bold });
+      }
+    };
+
+    const chars = Array.from(title);
+    for (let i = 0; i < chars.length; i += 1) {
+      const char = chars[i];
+      if (char === '(' || char === ')') {
+        const chunk = title.slice(lastIndex, i);
+        pushText(chunk, !inParens);
+        pushText(char, false);
+        lastIndex = i + 1;
+        inParens = char === '(' ? true : false;
+      }
+    }
+    if (lastIndex < title.length) {
+      pushText(title.slice(lastIndex), !inParens);
+    }
+
+    const withQuantities: Array<{ text: string; bold: boolean }> = [];
+    segments.forEach((segment) => {
+      if (!segment.bold) {
+        withQuantities.push(segment);
+        return;
+      }
+      let segmentIndex = 0;
+      for (const match of segment.text.matchAll(quantityRegex)) {
+        if (match.index === undefined) {
+          continue;
+        }
+        const matchText = match[0];
+        const matchStart = match.index;
+        if (matchStart > segmentIndex) {
+          withQuantities.push({ text: segment.text.slice(segmentIndex, matchStart), bold: true });
+        }
+        withQuantities.push({ text: matchText, bold: false });
+        segmentIndex = matchStart + matchText.length;
+      }
+      if (segmentIndex < segment.text.length) {
+        withQuantities.push({ text: segment.text.slice(segmentIndex), bold: true });
+      }
+    });
+
+    if (withQuantities.length === 0) {
+      return <Text style={styles.planMetaStrong}>{title}</Text>;
+    }
+    return (
+      <Text>
+        {withQuantities.map((segment, index) => (
+          <Text
+            // eslint-disable-next-line react/no-array-index-key
+            key={`${segment.text}-${index}`}
+            style={segment.bold ? styles.planMetaStrong : undefined}>
+            {segment.text}
+          </Text>
+        ))}
+      </Text>
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
@@ -506,19 +620,23 @@ export default function PlanScreen() {
         {info ? <Text style={styles.info}>{info}</Text> : null}
       </View>
 
-      {topDeals.length > 0 && (
+      {plan && (
         <View style={styles.topDealsBar}>
           <Text style={styles.sectionTitle}>Top Savings This Week</Text>
-          {plan?.selectedStore ? (
+          {plan.selectedStore ? (
             <Text style={styles.planStore}>
               Go-to store: <Text style={styles.planStoreStrong}>{plan.selectedStore}</Text>
             </Text>
           ) : null}
-          {topDeals.map((deal) => (
-            <Text key={deal.id} style={styles.planMeta}>
-              {deal.title} • CAD {deal.price.toFixed(2)} / {deal.unit}
-            </Text>
-          ))}
+          {topDeals.length > 0 ? (
+            topDeals.map((deal) => (
+              <Text key={deal.id} style={styles.planMeta}>
+                {renderTopDealTitle(deal.title)} • CAD {deal.price.toFixed(2)} / {deal.unit}
+              </Text>
+            ))
+          ) : (
+            <Text style={styles.planMeta}>No matching deals yet.</Text>
+          )}
         </View>
       )}
 
@@ -820,6 +938,10 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#5F6368',
     marginBottom: 2,
+  },
+  planMetaStrong: {
+    fontWeight: '700',
+    color: '#1F1F1F',
   },
   ingredientName: {
     fontWeight: '700',

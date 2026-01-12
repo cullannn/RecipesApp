@@ -1,13 +1,15 @@
 import { useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { Button, Chip, TextInput } from 'react-native-paper';
+import { Button, Checkbox, Chip, TextInput } from 'react-native-paper';
 
 import { GradientTitle } from '@/components/gradient-title';
 import { PatternBackground } from '@/components/pattern-background';
+import { GROCERY_STORES } from '@/src/constants/stores';
 import { usePreferencesStore } from '@/src/state/usePreferencesStore';
 import { formatPostalCode, isValidCanadianPostalCode, normalizePostalCode } from '@/src/utils/postalCode';
+import { resolveStoreLogo } from '@/src/utils/storeLogos';
 
 const dietaryOptions = ['None', 'Vegetarian', 'Pescatarian', 'Halal', 'Keto'];
 
@@ -21,6 +23,8 @@ export default function OnboardingScreen() {
     setDietaryPreferences,
     setAllergies,
     setHouseholdSize,
+    favoriteStores,
+    toggleFavoriteStore,
   } = usePreferencesStore();
 
   const [postalInput, setPostalInput] = useState(formatPostalCode(postalCode));
@@ -134,6 +138,34 @@ export default function OnboardingScreen() {
               />
             </View>
 
+            <View style={styles.section}>
+              <Text style={styles.label}>Favorite grocery stores</Text>
+              <Text style={styles.helper}>
+                Select stores to highlight in Deals and prioritize in meal plans.
+              </Text>
+              <View style={styles.storeList}>
+                {GROCERY_STORES.map((store) => {
+                  const logo = resolveStoreLogo(store);
+                  const checked = favoriteStores.includes(store);
+                  return (
+                    <Pressable
+                      key={store}
+                      onPress={() => toggleFavoriteStore(store)}
+                      style={({ pressed }) => [styles.storeRow, pressed && styles.storeRowPressed]}
+                    >
+                      {logo ? (
+                        <Image source={typeof logo === 'string' ? { uri: logo } : logo} style={styles.storeLogo} />
+                      ) : (
+                        <View style={styles.storeLogoFallback} />
+                      )}
+                      <Text style={styles.storeName}>{store}</Text>
+                      <Checkbox status={checked ? 'checked' : 'unchecked'} />
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
+
             <Button
               mode="contained"
               onPress={onSave}
@@ -195,6 +227,11 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     color: '#5F6368',
   },
+  helper: {
+    fontSize: 12,
+    color: '#7B8187',
+    marginBottom: 10,
+  },
   input: {
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
@@ -211,6 +248,41 @@ const styles = StyleSheet.create({
   },
   chipSelected: {
     backgroundColor: '#D8EFDF',
+  },
+  storeList: {
+    gap: 8,
+  },
+  storeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: '#EEF1F6',
+  },
+  storeRowPressed: {
+    opacity: 0.7,
+  },
+  storeLogo: {
+    width: 32,
+    height: 32,
+    marginRight: 12,
+    resizeMode: 'contain',
+  },
+  storeLogoFallback: {
+    width: 32,
+    height: 32,
+    marginRight: 12,
+    borderRadius: 16,
+    backgroundColor: '#E6E9EF',
+  },
+  storeName: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1F1F1F',
   },
   error: {
     color: '#c0392b',

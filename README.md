@@ -52,7 +52,10 @@ node server/index.mjs
 3. Set `EXPO_PUBLIC_AI_BASE_URL` to the server URL (use your machine IP for mobile).
 
 Defaults:
-- `OPENAI_MODEL` (default `gpt-4o-mini`)
+- `OPENAI_RECIPE_MODEL` (default `gpt-5-mini`)
+- `OPENAI_TITLE_MODEL` (default `gpt-5-nano`)
+- `OPENAI_NUTRITION_MODEL` (default `gpt-5-nano`)
+- `OPENAI_IMAGE_PROMPT_MODEL` (default `gpt-5-nano`)
 - `OPENAI_IMAGE_MODEL` (default `gpt-image-1`)
 
 Note: If you switch networks (e.g., to a phone hotspot), update `EXPO_PUBLIC_AI_BASE_URL` in `.env` to your new local IP and restart the server/Expo.

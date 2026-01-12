@@ -8,22 +8,519 @@ const CACHE_TTL_MS = 1000 * 60 * 60;
 
 const storeList = [
   'No Frills',
-  'Loblaws',
-  'Real Canadian Superstore',
+  'Sobeys',
+  'Longo\'s',
+  'Walmart',
   'Metro',
   'FreshCo',
-  'Food Basics',
-  'Walmart',
   'Costco',
-  'Longo\'s',
+  'Real Canadian Superstore',
+  'Loblaws',
+  'Farm Boy',
+  'Sunny Supermarket',
+  'WinCo Food Mart',
+  'Galleria Supermarket',
+  'H Mart',
+  'Bestco Food Mart',
+  'Foody Mart',
+  'T&T Supermarket',
 ];
+
+const FLYERTOWN_CONFIG = {
+  baseUrl: 'https://www.flyertown.ca',
+  locale: 'en',
+  publisherId: 'flyertown',
+};
+
+const TNT_CONFIG = {
+  baseUrl: 'https://www.tntsupermarket.com',
+  defaultPostalPrefix: 'L3T',
+  flyerCategoryPageSize: 100,
+};
+
+const FLYERTOWN_STORES = [
+  {
+    store: 'No Frills',
+    searchPhrase: 'nofrills',
+    stack: 'groceries',
+    flyerName: 'nofrills-weeklyflyer',
+  },
+  {
+    store: 'Sobeys',
+    searchPhrase: 'sobeys',
+    stack: 'groceries',
+    flyerName: 'sobeys-sobeysontario',
+  },
+  {
+    store: 'Longo\'s',
+    searchPhrase: 'longos',
+    stack: 'groceries',
+    flyerName: 'longos-flyer',
+  },
+  {
+    store: 'Walmart',
+    searchPhrase: 'walmart',
+    stack: 'groceries',
+    flyerName: 'walmartcanada-groceryflyer',
+  },
+  {
+    store: 'Metro',
+    searchPhrase: 'metro',
+    stack: 'groceries',
+    flyerName: 'metro-flyer',
+  },
+  {
+    store: 'FreshCo',
+    searchPhrase: 'freshco',
+    stack: 'groceries',
+    flyerName: 'freshco-flyer',
+  },
+  {
+    store: 'Costco',
+    searchPhrase: 'costco',
+    stack: 'groceries',
+    flyerName: 'costcocanada-cpgroceryflyer',
+  },
+  {
+    store: 'Real Canadian Superstore',
+    searchPhrase: 'superstore',
+    stack: 'groceries',
+    flyerName: 'realcanadiansuperstore-flyer',
+  },
+  {
+    store: 'Loblaws',
+    searchPhrase: 'loblaws',
+    stack: 'groceries',
+    flyerName: 'loblaws-dryrun',
+  },
+  {
+    store: 'Farm Boy',
+    searchPhrase: 'farmboy',
+    stack: 'groceries',
+    flyerName: 'farmboy-flyerflipweekly',
+  },
+  {
+    store: 'Sunny Supermarket',
+    searchPhrase: 'sunny',
+    stack: 'groceries',
+    flyerName: 'sunnysupermarket-indexedweekly',
+  },
+  {
+    store: 'WinCo Food Mart',
+    searchPhrase: 'winco',
+    stack: 'groceries',
+    flyerName: 'wincofoodmart-indexedweekly',
+    postalCode: 'L6C0H3',
+  },
+  {
+    store: 'Galleria Supermarket',
+    searchPhrase: 'galleria',
+    stack: 'groceries',
+    flyerName: 'galleriasupermarket-indexedweekly',
+    postalCode: 'L6C0H3',
+  },
+  {
+    store: 'H Mart',
+    searchPhrase: 'hmart',
+    stack: 'groceries',
+    flyerName: 'hmartcanada-indexedweekly',
+    postalCode: 'L6C0H3',
+  },
+  {
+    store: 'Bestco Food Mart',
+    searchPhrase: 'bestco',
+    stack: 'groceries',
+    flyerName: 'bestcofoodmart-indexedweekly',
+    postalCode: 'L6C0H3',
+  },
+  {
+    store: 'Foody Mart',
+    searchPhrase: 'foody',
+    stack: 'groceries',
+    flyerName: 'foodymart-indexedweekly',
+    postalCode: 'L6C0H3',
+  },
+];
+
+const GROCERY_CATEGORIES = new Set([
+  'produce',
+  'meat',
+  'seafood',
+  'dairy',
+  'bakery',
+  'deli',
+  'pantry',
+  'frozen',
+  'snacks',
+  'beverages',
+]);
+
+const CATEGORY_RULES = [
+  { category: 'produce', match: /produce|vegetable|veggie|fruit/ },
+  { category: 'seafood', match: /seafood|fish|shrimp|salmon|tuna/ },
+  { category: 'meat', match: /meat|poultry|beef|pork|chicken|turkey|lamb/ },
+  { category: 'dairy', match: /dairy|milk|cheese|yogurt|cream|butter|eggs?/ },
+  { category: 'bakery', match: /bakery|bread|bagel|pastry|cake|muffin|donut/ },
+  { category: 'deli', match: /deli|prepared|sandwich|charcuterie/ },
+  {
+    category: 'pantry',
+    match: /pantry|grocery|dry|canned|pasta|rice|cereal|baking|spice|sauce|condiment|oil|flour|sugar/,
+  },
+  { category: 'frozen', match: /frozen|ice cream/ },
+  { category: 'snacks', match: /snack|chips|cookies|crackers|candy|chocolate/ },
+  { category: 'beverages', match: /beverage|drink|soda|juice|water|coffee|tea/ },
+];
+
+const NON_GROCERY_RULES = [
+  /bedroom|living room|sofa|couch|mattress|furniture|decor|lighting|bedding|bath\b/,
+  /tv|television|electronics|laptop|computer|phone|tablet|camera|headphones/,
+  /clothing|apparel|jacket|shirt|pants|jeans|shoes|footwear|fashion|accessories/,
+  /toy|game|lego|puzzle|book|stationery/,
+  /hardware|tool|automotive|tire|car\b/,
+  /patio|garden|outdoor|barbecue|bbq/,
+  /kitchenware|cookware|appliance|maker|blender|mixer|kettle|toaster|microwave|oven|air\s*fryer|deep fryer|rice cooker|pressure cooker|slow cooker|utensil|cutlery|knife|skillet|wok|\bpan\b|\bpot\b/,
+];
+
+const GENERIC_GROCERY_LABELS = new Set(['other', 'grocery', 'groceries', 'general', 'food', 'market']);
 
 function nowIso() {
   return new Date().toISOString();
 }
 
+function formatDate(date = new Date()) {
+  return date.toISOString().slice(0, 10);
+}
+
 function normalizePostalCode(input) {
   return input.trim().toUpperCase().replace(/\s+/g, '');
+}
+
+function toPostalPrefix(postalCode) {
+  if (!postalCode) {
+    return TNT_CONFIG.defaultPostalPrefix;
+  }
+  const normalized = normalizePostalCode(postalCode);
+  if (normalized.length >= 3) {
+    return normalized.slice(0, 3);
+  }
+  return TNT_CONFIG.defaultPostalPrefix;
+}
+
+function parsePrice(value) {
+  if (value === null || value === undefined) {
+    return null;
+  }
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value;
+  }
+  const match = String(value).replace(',', '.').match(/\d+(\.\d+)?/);
+  if (!match) {
+    return null;
+  }
+  const parsed = Number.parseFloat(match[0]);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function normalizeFlyertownNumericPrice(value) {
+  if (!Number.isFinite(value)) {
+    return null;
+  }
+  if (value >= 100 && Number.isInteger(value) && value <= 10000) {
+    return Number.parseFloat((value / 100).toFixed(2));
+  }
+  return value;
+}
+
+function parseFlyertownPrice(item) {
+  if (typeof item?.current_price === 'number' && Number.isFinite(item.current_price)) {
+    return normalizeFlyertownNumericPrice(item.current_price);
+  }
+  const priceText =
+    item?.price_text ??
+    item?.pre_price_text ??
+    item?.sale_story ??
+    '';
+  const textPrice = parsePrice(priceText);
+  if (textPrice !== null) {
+    return textPrice;
+  }
+  const description = String(item?.description ?? '');
+  if (description && /[$¢]/.test(description)) {
+    return parsePrice(description);
+  }
+  const unitMatch = description.match(/(\d+(?:\.\d+)?)\/(kg|lb)/i);
+  if (unitMatch) {
+    const value = Number.parseFloat(unitMatch[1]);
+    if (Number.isFinite(value)) {
+      if (unitMatch[2].toLowerCase() === 'kg') {
+        const perLb = value / 2.20462262185;
+        return Number.parseFloat(perLb.toFixed(2));
+      }
+      return value;
+    }
+  }
+  return null;
+}
+
+function normalizeUnit(value) {
+  if (!value) {
+    return 'each';
+  }
+  const cleaned = String(value).trim().replace(/^\/+/, '');
+  return cleaned || 'each';
+}
+
+function normalizeCategory(value, text) {
+  const label = value ? String(value).trim().toLowerCase() : '';
+  const content = text ? String(text).trim().toLowerCase() : '';
+  const combined = `${label} ${content}`.trim();
+
+  if (!combined) {
+    return 'other';
+  }
+
+  for (const rule of NON_GROCERY_RULES) {
+    if (rule.test(combined)) {
+      return 'other';
+    }
+  }
+
+  if (label.includes('meat') && label.includes('seafood')) {
+    return 'meat';
+  }
+
+  for (const rule of CATEGORY_RULES) {
+    if (rule.match.test(combined)) {
+      return rule.category;
+    }
+  }
+
+  if (!label || GENERIC_GROCERY_LABELS.has(label)) {
+    return 'pantry';
+  }
+
+  return 'other';
+}
+
+function isGroceryCategory(category) {
+  if (!category) {
+    return false;
+  }
+  return GROCERY_CATEGORIES.has(String(category).trim().toLowerCase());
+}
+
+function parseTntValidityRange(value) {
+  if (!value) {
+    return {};
+  }
+  const match = String(value).match(/(\d{4}\/\d{2}\/\d{2})\s*-\s*(\d{4}\/\d{2}\/\d{2})/);
+  if (!match) {
+    return {};
+  }
+  const toIso = (input) => input.replace(/\//g, '-');
+  return {
+    validFrom: toIso(match[1]),
+    validTo: toIso(match[2]),
+  };
+}
+
+async function scrapeLoblawsDeals() {
+  return scrapeFlyertownDeals(FLYERTOWN_STORES.find((entry) => entry.store === 'Loblaws'));
+}
+
+async function fetchTntFlyerCategory(postalCode) {
+  const url = new URL('/rest/V3/xmapi/get-store-eflyers', TNT_CONFIG.baseUrl);
+  url.searchParams.set('postcode', toPostalPrefix(postalCode));
+  url.searchParams.set('default', '1');
+  const res = await fetch(url, {
+    headers: { 'User-Agent': 'Mozilla/5.0' },
+  });
+  if (!res.ok) {
+    throw new Error(`T&T eflyer error ${res.status}: ${res.statusText}`);
+  }
+  const payload = await res.json();
+  return payload?.data ?? null;
+}
+
+async function fetchTntFlyerItems(categoryId, pageSize, currentPage) {
+  const query = `
+    query ($id: Int!, $pageSize: Int!, $currentPage: Int!) {
+      category(id: $id) {
+        id
+        name
+        products(pageSize: $pageSize, currentPage: $currentPage) {
+          items {
+            name
+            sku
+            small_image {
+              url
+            }
+            price_range {
+              minimum_price {
+                final_price {
+                  value
+                  currency
+                }
+                regular_price {
+                  value
+                  currency
+                }
+              }
+            }
+          }
+          page_info {
+            current_page
+            total_pages
+          }
+          total_count
+        }
+      }
+    }
+  `;
+  const res = await fetch(`${TNT_CONFIG.baseUrl}/graphql`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'User-Agent': 'Mozilla/5.0',
+    },
+    body: JSON.stringify({
+      query,
+      variables: {
+        id: Number(categoryId),
+        pageSize,
+        currentPage,
+      },
+    }),
+  });
+  if (!res.ok) {
+    throw new Error(`T&T GraphQL error ${res.status}: ${res.statusText}`);
+  }
+  return res.json();
+}
+
+async function scrapeTntDeals(postalCode) {
+  const eflyerData = await fetchTntFlyerCategory(postalCode);
+  if (!eflyerData?.category_id) {
+    return [];
+  }
+  const validity = eflyerData?.eflyer_list?.[0]?.validity;
+  const { validFrom, validTo } = parseTntValidityRange(validity);
+  const deals = [];
+  const pageSize = TNT_CONFIG.flyerCategoryPageSize;
+  let currentPage = 1;
+  let totalPages = 1;
+  while (currentPage <= totalPages) {
+    const payload = await fetchTntFlyerItems(eflyerData.category_id, pageSize, currentPage);
+    const products = payload?.data?.category?.products;
+    if (!products) {
+      break;
+    }
+    totalPages = Number(products.page_info?.total_pages ?? currentPage);
+    for (const item of products.items ?? []) {
+      const title = item?.name;
+      const finalPrice = item?.price_range?.minimum_price?.final_price?.value;
+      const regularPrice = item?.price_range?.minimum_price?.regular_price?.value;
+      if (!title || finalPrice === null || finalPrice === undefined) {
+        continue;
+      }
+      if (regularPrice === null || regularPrice === undefined || Number(finalPrice) >= Number(regularPrice)) {
+        continue;
+      }
+      deals.push({
+        id: `tnt-${eflyerData.category_id}-${item.sku ?? title}`,
+        title: String(title).trim(),
+        store: 'T&T Supermarket',
+        price: Number(finalPrice),
+        unit: 'each',
+        category: normalizeCategory('', title),
+        imageUrl: item?.small_image?.url || undefined,
+        validFrom,
+        validTo,
+      });
+    }
+    currentPage += 1;
+  }
+  return deals;
+}
+
+function parseFlyertownSearch(html, desiredFlyerName) {
+  const matches = Array.from(html.matchAll(/#!\/flyers\/([^?]+)\?[^"\s]*flyer_run_id=(\d+)/g));
+  if (matches.length === 0) {
+    return null;
+  }
+  if (desiredFlyerName) {
+    const desired = matches.find((match) => match[1] === desiredFlyerName);
+    if (desired) {
+      return { flyerName: desired[1], flyerRunId: desired[2] };
+    }
+  }
+  return { flyerName: matches[0][1], flyerRunId: matches[0][2] };
+}
+
+async function fetchFlyertownSearch(config) {
+  const searchUrl = new URL('/d/p/flyertown/search', FLYERTOWN_CONFIG.baseUrl);
+  searchUrl.searchParams.set('locale', FLYERTOWN_CONFIG.locale);
+  searchUrl.searchParams.set('p', FLYERTOWN_CONFIG.publisherId);
+  searchUrl.searchParams.set('stack', config.stack);
+  searchUrl.searchParams.set('phrase', config.searchPhrase);
+  if (config.postalCode) {
+    searchUrl.searchParams.set('postal_code', config.postalCode);
+  }
+  const searchRes = await fetch(searchUrl);
+  if (!searchRes.ok) {
+    throw new Error(`Flyertown search error ${searchRes.status}: ${searchRes.statusText}`);
+  }
+  const searchHtml = await searchRes.text();
+  return parseFlyertownSearch(searchHtml, config.flyerName);
+}
+
+async function fetchFlyertownData(flyerName, flyerRunId) {
+  const dataUrl = new URL(`/d/flyer_data/${flyerName}`, FLYERTOWN_CONFIG.baseUrl);
+  dataUrl.searchParams.set('flyer_run_id', flyerRunId);
+  const flyerRes = await fetch(dataUrl);
+  if (!flyerRes.ok) {
+    throw new Error(`Flyertown flyer error ${flyerRes.status}: ${flyerRes.statusText}`);
+  }
+  return flyerRes.json();
+}
+
+async function scrapeFlyertownDeals(config) {
+  let flyerName = config.flyerName;
+  let flyerRunId = null;
+  const searchResult = await fetchFlyertownSearch(config);
+  if (searchResult?.flyerName && searchResult?.flyerRunId) {
+    flyerName = searchResult.flyerName;
+    flyerRunId = searchResult.flyerRunId;
+  }
+  if (!flyerName || !flyerRunId) {
+    return [];
+  }
+  const flyerData = await fetchFlyertownData(flyerName, flyerRunId);
+  const deals = [];
+  const seenIds = new Map();
+  for (const item of flyerData?.items ?? []) {
+    const title = item.display_name || item.name || item.description;
+    const price = parseFlyertownPrice(item);
+    if (!title || price === null) {
+      continue;
+    }
+    const baseId = `${config.store.toLowerCase().replace(/\s+/g, '-')}-${flyerRunId}-${item.flyer_item_id ?? item.sku ?? title}`;
+    const nextCount = (seenIds.get(baseId) ?? 0) + 1;
+    seenIds.set(baseId, nextCount);
+    const dealId = nextCount === 1 ? baseId : `${baseId}-${nextCount}`;
+    deals.push({
+      id: dealId,
+      title: String(title).trim(),
+      store: config.store,
+      price,
+      unit: normalizeUnit(item.price_text || item.pre_price_text),
+      category: normalizeCategory(item.category_names?.[0], title),
+      imageUrl: item.large_image_url || item.x_large_image_url || undefined,
+      validFrom: item.valid_from || flyerData?.valid_from || undefined,
+      validTo: item.valid_to || flyerData?.valid_to || undefined,
+    });
+  }
+  return deals;
 }
 
 async function ensureCacheDir() {
@@ -47,33 +544,29 @@ async function saveCache(postalCode, payload) {
 }
 
 async function scrapeFlyerDeals({ postalCode }) {
-  // TODO: Replace with Flipp/aggregator integration.
-  const mockPath = path.join(process.cwd(), 'src', 'fixtures', 'deals', 'toronto');
-  const files = [
-    'no-frills.json',
-    'loblaws.json',
-    'real-canadian-superstore.json',
-    'metro.json',
-    'freshco.json',
-    'food-basics.json',
-    'walmart.json',
-    'costco.json',
-    'longos.json',
+  const tasks = [
+    { store: 'Loblaws', run: () => scrapeLoblawsDeals() },
+    ...FLYERTOWN_STORES.filter((config) => config.store !== 'Loblaws').map((config) => ({
+      store: config.store,
+      run: () => scrapeFlyertownDeals(config),
+    })),
+    { store: 'T&T Supermarket', run: () => scrapeTntDeals(postalCode) },
   ];
+  const results = await Promise.allSettled(tasks.map((task) => task.run()));
   const deals = [];
-  for (const file of files) {
-    try {
-      const raw = await readFile(path.join(mockPath, file), 'utf-8');
-      deals.push(...JSON.parse(raw));
-    } catch (error) {
-      // Ignore missing fixtures.
+  results.forEach((result, index) => {
+    if (result.status === 'fulfilled') {
+      deals.push(...result.value);
+    } else {
+      console.warn(`Deals scrape failed for ${tasks[index].store}:`, result.reason);
     }
-  }
+  });
+  const filteredDeals = deals.filter((deal) => isGroceryCategory(deal.category));
   return {
     postalCode,
     stores: storeList,
     fetchedAt: nowIso(),
-    deals,
+    deals: filteredDeals,
   };
 }
 

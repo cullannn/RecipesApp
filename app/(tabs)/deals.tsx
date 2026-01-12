@@ -1,8 +1,8 @@
-import { useMemo, useState } from 'react';
-import { FlatList, Pressable, ScrollView, StyleSheet, Text, View, Image as RNImage } from 'react-native';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Animated, Easing, FlatList, Pressable, ScrollView, StyleSheet, Text, View, Image as RNImage } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
-import { Card } from 'react-native-paper';
+import { Card, TextInput, Button } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 import { PatternBackground } from '@/components/pattern-background';
@@ -10,10 +10,12 @@ import { GradientTitle } from '@/components/gradient-title';
 import { useDeals } from '@/src/hooks/useDeals';
 import { useRemoteImage } from '@/src/hooks/useRemoteImage';
 import { usePreferencesStore } from '@/src/state/usePreferencesStore';
+import { normalizeStoreName, resolveStoreLogo } from '@/src/utils/storeLogos';
 import { getGtaCityForPostalCode } from '@/src/utils/postalCode';
 
 const fallbackImage =
   'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=800&q=80';
+const loadingFallbackIcon = 'basket-outline';
 
 function FilterItem({
   label,
@@ -115,43 +117,109 @@ function DealCard({
   );
 }
 
-const storeLogoMap: Record<string, number | string> = {
-  'no frills': require('../../assets/logos/official/no-frills.png'),
-  loblaws: require('../../assets/logos/official/loblaws.png'),
-  'real canadian superstore': require('../../assets/logos/official/real-canadian-superstore.png'),
-  metro: require('../../assets/logos/official/metro.png'),
-  freshco: require('../../assets/logos/official/freshco.png'),
-  'food basics': require('../../assets/logos/official/food-basics.png'),
-  walmart: require('../../assets/logos/official/walmart.png'),
-  costco: require('../../assets/logos/official/costco.png'),
-  longos: require('../../assets/logos/official/longos.png'),
-  bestco: require('../../assets/logos/official/bestco.png'),
+function LoadingDealsSplash() {
+  const spinValue = useRef(new Animated.Value(0)).current;
+  const floatValue = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const spinAnim = Animated.loop(
+      Animated.timing(spinValue, {
+        toValue: 1,
+        duration: 2400,
+        easing: Easing.linear,
+        useNativeDriver: true,
+      })
+    );
+    const floatAnim = Animated.loop(
+      Animated.sequence([
+        Animated.timing(floatValue, {
+          toValue: 1,
+          duration: 900,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: true,
+        }),
+        Animated.timing(floatValue, {
+          toValue: 0,
+          duration: 900,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: true,
+        }),
+      ])
+    );
+    spinAnim.start();
+    floatAnim.start();
+    return () => {
+      spinAnim.stop();
+      floatAnim.stop();
+    };
+  }, [spinValue, floatValue]);
+
+  const spin = spinValue.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
+  const float = floatValue.interpolate({ inputRange: [0, 1], outputRange: [0, -6] });
+  return (
+    <View style={styles.loadingWrap}>
+      <Animated.View style={[styles.loadingHalo, { transform: [{ translateY: float }] }]}>
+        <Animated.View style={[styles.loadingIconWrap, { transform: [{ rotate: spin }] }]}>
+          <MaterialCommunityIcons name={loadingFallbackIcon} size={44} color="#1B7F3A" />
+        </Animated.View>
+      </Animated.View>
+      <Text style={styles.loadingText}>Refreshing the flyers...</Text>
+      <Text style={styles.loadingSubtext}>Grabbing the freshest grocery deals for you.</Text>
+    </View>
+  );
+}
+
+const sortStoresByPreference = (stores: string[], favorites: string[]) => {
+  if (favorites.length === 0) {
+    return stores.slice().sort((a, b) => a.localeCompare(b));
+  }
+  const favoriteOrder = new Map(
+    favorites.map((store, index) => [normalizeStoreName(store), index])
+  );
+  return stores.slice().sort((a, b) => {
+    const aRank = favoriteOrder.get(normalizeStoreName(a));
+    const bRank = favoriteOrder.get(normalizeStoreName(b));
+    if (aRank !== undefined && bRank !== undefined) {
+      return aRank - bRank;
+    }
+    if (aRank !== undefined) {
+      return -1;
+    }
+    if (bRank !== undefined) {
+      return 1;
+    }
+    return a.localeCompare(b);
+  });
 };
 
-const normalizeStoreName = (store: string) =>
-  store.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
-
-const resolveStoreLogo = (store: string) => {
-  const normalized = normalizeStoreName(store);
-  const candidates = [
-    normalized,
-    normalized.replace(/\s+/g, ''),
-    normalized.replace('fresh foods', '').trim(),
-    normalized.replace('real canadian ', '').trim(),
-  ].filter(Boolean);
-  for (const key of candidates) {
-    const logo = storeLogoMap[key];
-    if (logo) {
-      return logo;
+const buildStoreFilterList = (stores: string[], favorites: string[]) => {
+  const normalizedToStore = new Map<string, string>();
+  favorites.forEach((store) => {
+    normalizedToStore.set(normalizeStoreName(store), store);
+  });
+  stores.forEach((store) => {
+    const key = normalizeStoreName(store);
+    if (!normalizedToStore.has(key)) {
+      normalizedToStore.set(key, store);
     }
-  }
-  return undefined;
+  });
+  const favoriteKeys = favorites.map((store) => normalizeStoreName(store));
+  const favoriteList = favoriteKeys
+    .map((key) => normalizedToStore.get(key))
+    .filter(Boolean) as string[];
+  const remaining = Array.from(normalizedToStore.values()).filter(
+    (store) => !favoriteKeys.includes(normalizeStoreName(store))
+  );
+  return [...favoriteList, ...remaining.sort((a, b) => a.localeCompare(b))];
 };
 
 export default function DealsScreen() {
-  const { postalCode } = usePreferencesStore();
+  const { postalCode, favoriteStores } = usePreferencesStore();
   const [selectedStore, setSelectedStore] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+  const [searchQuery, setSearchQuery] = useState('');
+  const chevronAnims = useRef(new Map<string, Animated.Value>());
   const dealsQuery = useDeals({
     postalCode,
     stores: selectedStore ? [selectedStore] : undefined,
@@ -165,10 +233,16 @@ export default function DealsScreen() {
   );
 
   const stores = useMemo(() => {
+    if (selectedStore) {
+      return [selectedStore];
+    }
     const list = new Set<string>();
     dealsQuery.data?.forEach((deal) => list.add(deal.store));
-    return Array.from(list);
-  }, [dealsQuery.data]);
+    if (list.size === 0) {
+      return [];
+    }
+    return buildStoreFilterList(Array.from(list), favoriteStores);
+  }, [dealsQuery.data, favoriteStores, selectedStore]);
 
   const groupedDeals = useMemo(() => {
     type Deal = (typeof deals)[number];
@@ -187,7 +261,11 @@ export default function DealsScreen() {
       return `(${format(startDate)} to ${format(endDate)})`;
     };
     const groups = new Map<string, Group>();
-    deals.forEach((deal) => {
+    const normalizedSearch = searchQuery.trim().toLowerCase();
+    const filteredDeals = normalizedSearch
+      ? deals.filter((deal) => deal.title.toLowerCase().includes(normalizedSearch))
+      : deals;
+    filteredDeals.forEach((deal) => {
       const range = formatRange(deal.validFrom, deal.validTo);
       const key = `${deal.store}__${range}`;
       const existing = groups.get(key);
@@ -197,8 +275,63 @@ export default function DealsScreen() {
       }
       groups.set(key, { key, store: deal.store, range, deals: [deal] });
     });
-    return Array.from(groups.values()).sort((a, b) => a.store.localeCompare(b.store));
-  }, [deals]);
+    const grouped = Array.from(groups.values());
+    if (favoriteStores.length === 0) {
+      return grouped.sort((a, b) => a.store.localeCompare(b.store));
+    }
+    const favoriteOrder = new Map(
+      favoriteStores.map((store, index) => [normalizeStoreName(store), index])
+    );
+    return grouped.sort((a, b) => {
+      const aRank = favoriteOrder.get(normalizeStoreName(a.store));
+      const bRank = favoriteOrder.get(normalizeStoreName(b.store));
+      if (aRank !== undefined && bRank !== undefined) {
+        return aRank - bRank;
+      }
+      if (aRank !== undefined) {
+        return -1;
+      }
+      if (bRank !== undefined) {
+        return 1;
+      }
+      return a.store.localeCompare(b.store);
+    });
+  }, [deals, favoriteStores, searchQuery]);
+
+  useEffect(() => {
+    groupedDeals.forEach((group) => {
+      if (!chevronAnims.current.has(group.key)) {
+        chevronAnims.current.set(
+          group.key,
+          new Animated.Value(collapsedGroups.has(group.key) ? 0 : 1)
+        );
+      }
+    });
+  }, [groupedDeals, collapsedGroups]);
+
+  const toggleGroup = (key: string) => {
+    setCollapsedGroups((prev) => {
+      const next = new Set(prev);
+      const isCollapsed = next.has(key);
+      const progress = chevronAnims.current.get(key) ?? new Animated.Value(isCollapsed ? 0 : 1);
+      if (!chevronAnims.current.has(key)) {
+        chevronAnims.current.set(key, progress);
+      }
+      Animated.spring(progress, {
+        toValue: isCollapsed ? 1 : 0,
+        friction: 7,
+        tension: 120,
+        useNativeDriver: true,
+      }).start();
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+      return next;
+    });
+  };
+
 
   const categories = useMemo(() => {
     const list = new Set<string>();
@@ -238,6 +371,23 @@ export default function DealsScreen() {
       <View style={styles.filterBar}>
         <View style={styles.header}>
           <GradientTitle text={cityLabel ? `Deals in ${cityLabel}` : 'Deals'} style={styles.title} />
+        </View>
+        <View style={styles.searchRow}>
+          <TextInput
+            mode="outlined"
+            placeholder="Search deals"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            style={styles.searchInput}
+            textColor="#2A2F34"
+            placeholderTextColor="#9AA0A6"
+            left={<TextInput.Icon icon="magnify" color="#7A8086" />}
+            right={
+              searchQuery ? (
+                <TextInput.Icon icon="close-circle" color="#7A8086" onPress={() => setSearchQuery('')} />
+              ) : null
+            }
+          />
         </View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsRow}>
           <FilterItem label="All Stores" selected={!selectedStore} onPress={() => setSelectedStore(null)} />
@@ -283,29 +433,71 @@ export default function DealsScreen() {
           contentContainerStyle={styles.list}
           style={styles.listSurface}
           ListEmptyComponent={
-            <Text style={styles.subtitle}>
-              {dealsQuery.isLoading ? 'Loading deals...' : 'No deals found for that filter.'}
-            </Text>
-          }
-          renderItem={({ item }) => (
-            <View style={styles.groupCard}>
-              <View style={styles.groupHeader}>
-                <Text style={styles.groupTitle}>
-                  {item.store} {item.range}
+            dealsQuery.isLoading ? (
+              <LoadingDealsSplash />
+            ) : (
+              <View style={styles.emptyState}>
+                <Text style={styles.subtitle}>
+                  {dealsQuery.isError
+                    ? 'Waiting for the local scraper to finish. Hold tight!'
+                    : 'No deals found for that filter.'}
                 </Text>
+                {dealsQuery.isError ? (
+                  <Button mode="contained" compact onPress={() => dealsQuery.refetch()}>
+                    Retry
+                  </Button>
+                ) : null}
               </View>
-              <View style={styles.groupBody}>
-                {item.deals.map((deal) => {
-                  return (
-                    <DealCard
-                      key={deal.id}
-                      item={deal}
+            )
+          }
+          renderItem={({ item }) => {
+            const isCollapsed = collapsedGroups.has(item.key);
+            const chevronProgress = chevronAnims.current.get(item.key) ?? new Animated.Value(isCollapsed ? 0 : 1);
+            const rotate = chevronProgress.interpolate({
+              inputRange: [0, 1],
+              outputRange: ['-90deg', '0deg'],
+            });
+            const scale = chevronProgress.interpolate({
+              inputRange: [0, 1],
+              outputRange: [0.92, 1],
+            });
+            return (
+            <View style={styles.groupCard}>
+              <Pressable onPress={() => toggleGroup(item.key)} style={styles.groupHeader}>
+                <View style={styles.groupHeaderRow}>
+                  {resolveStoreLogo(item.store) ? (
+                    <RNImage
+                      source={resolveStoreLogo(item.store)}
+                      style={styles.groupHeaderLogo}
+                      resizeMode="contain"
                     />
-                  );
-                })}
-              </View>
+                  ) : null}
+                  <Text style={styles.groupTitle}>
+                    {item.store} {item.range}
+                  </Text>
+                  <View style={styles.groupHeaderSpacer} />
+                  <Animated.View style={[styles.groupToggle, { transform: [{ scale }] }]}>
+                    <Animated.View style={{ transform: [{ rotate }] }}>
+                      <MaterialCommunityIcons name="chevron-down-circle" size={20} color="#1B7F3A" />
+                    </Animated.View>
+                  </Animated.View>
+                </View>
+              </Pressable>
+              {!isCollapsed && (
+                <View style={styles.groupBody}>
+                  {item.deals.map((deal) => {
+                    return (
+                      <DealCard
+                        key={deal.id}
+                        item={deal}
+                      />
+                    );
+                  })}
+                </View>
+              )}
             </View>
-          )}
+          );
+        }}
         />
       </View>
     </SafeAreaView>
@@ -328,6 +520,18 @@ const styles = StyleSheet.create({
     paddingBottom: 6,
     marginBottom: 8,
   },
+  searchRow: {
+    paddingHorizontal: 16,
+    marginBottom: 10,
+  },
+  searchInput: {
+    height: 44,
+    backgroundColor: '#FFFFFF',
+  },
+  emptyState: {
+    alignItems: 'center',
+    gap: 6,
+  },
   centered: {
     flex: 1,
     alignItems: 'center',
@@ -345,6 +549,43 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#5F6368',
     textAlign: 'center',
+  },
+  loadingWrap: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 28,
+    gap: 8,
+  },
+  loadingHalo: {
+    width: 110,
+    height: 110,
+    borderRadius: 55,
+    backgroundColor: 'rgba(27, 127, 58, 0.08)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loadingIconWrap: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(27, 127, 58, 0.15)',
+  },
+  loadingImage: {
+    width: 72,
+    height: 72,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: '#2A2F34',
+    fontWeight: '600',
+  },
+  loadingSubtext: {
+    fontSize: 13,
+    color: '#7A8086',
   },
   sectionTitle: {
     fontSize: 13,
@@ -418,6 +659,33 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#CFE8D7',
     alignItems: 'center',
+  },
+  groupHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    width: '100%',
+  },
+  groupHeaderLogo: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+  },
+  groupHeaderSpacer: {
+    flex: 1,
+  },
+  groupToggle: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#0f172a',
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
   },
   groupTitle: {
     fontSize: 15,

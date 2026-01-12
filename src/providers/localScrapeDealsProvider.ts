@@ -1,5 +1,4 @@
 import type { DealItem, DealsProvider, DealsQuery } from './dealsProvider';
-import { mockDealsProvider } from './mockDealsProvider';
 import { normalizePostalCode } from '@/src/utils/postalCode';
 
 const BASE_URL = process.env.EXPO_PUBLIC_DEALS_SERVER_URL ?? 'http://localhost:8790';
@@ -37,8 +36,8 @@ export const localScrapeDealsProvider: DealsProvider = {
       const deals = Array.isArray(data?.deals) ? data.deals : [];
       return applyFilters(deals, query);
     } catch (error) {
-      console.warn('Deals server unavailable, falling back to local fixtures.', error);
-      return mockDealsProvider.searchDeals(query);
+      console.error('Deals server unavailable.', error);
+      throw error;
     } finally {
       clearTimeout(timeoutId);
     }

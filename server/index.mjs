@@ -5,7 +5,11 @@ import crypto from 'node:crypto';
 import 'dotenv/config';
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
-const OPENAI_MODEL = process.env.OPENAI_MODEL ?? 'gpt-4o-mini';
+const OPENAI_MODEL = process.env.OPENAI_MODEL;
+const OPENAI_RECIPE_MODEL = process.env.OPENAI_RECIPE_MODEL ?? OPENAI_MODEL ?? 'gpt-5-mini';
+const OPENAI_TITLE_MODEL = process.env.OPENAI_TITLE_MODEL ?? 'gpt-5-nano';
+const OPENAI_NUTRITION_MODEL = process.env.OPENAI_NUTRITION_MODEL ?? 'gpt-5-nano';
+const OPENAI_IMAGE_PROMPT_MODEL = process.env.OPENAI_IMAGE_PROMPT_MODEL ?? 'gpt-5-nano';
 const OPENAI_IMAGE_MODEL = process.env.OPENAI_IMAGE_MODEL ?? 'gpt-image-1';
 const PORT = Number.parseInt(process.env.PORT ?? '8787', 10);
 const CACHE_DIR = path.join(process.cwd(), 'server', 'cache');
@@ -192,7 +196,13 @@ async function resolveUnsplashImage(query) {
   }
 }
 
-async function callOpenAiChat(prompt) {
+async function callOpenAiChat({
+  prompt,
+  model,
+  temperature = 0.7,
+  responseFormat = 'json_object',
+  systemContent = 'You are a helpful culinary assistant that returns only valid JSON.',
+}) {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), OPENAI_TIMEOUT_MS);
   let response;
@@ -205,13 +215,13 @@ async function callOpenAiChat(prompt) {
       },
       signal: controller.signal,
       body: JSON.stringify({
-        model: OPENAI_MODEL,
-        temperature: 0.7,
-        response_format: { type: 'json_object' },
+        model,
+        temperature,
+        response_format: { type: responseFormat },
         messages: [
           {
             role: 'system',
-            content: 'You are a helpful culinary assistant that returns only valid JSON.',
+            content: systemContent,
           },
           {
             role: 'user',
@@ -239,6 +249,38 @@ async function callOpenAiChat(prompt) {
     throw new Error(`OpenAI chat failed: ${response.status} ${errorText}`);
   }
   return response.json();
+}
+
+async function polishImagePrompt(prompt) {
+  if (!OPENAI_API_KEY || !OPENAI_IMAGE_PROMPT_MODEL) {
+    return prompt;
+  }
+  try {
+    const chat = await callOpenAiChat({
+      prompt: JSON.stringify({
+        task: 'polish_image_prompt',
+        input: prompt,
+        rules: [
+          'Return a concise, vivid food photo prompt.',
+          'Keep it under 30 words.',
+          'No camera specs, no brands, no extra formatting.',
+          'Output JSON only: {"prompt": "..."}',
+        ],
+      }),
+      model: OPENAI_IMAGE_PROMPT_MODEL,
+      temperature: 0.4,
+      systemContent: 'You refine prompts for food photography. Return only JSON.',
+    });
+    const content = chat?.choices?.[0]?.message?.content;
+    if (!content) {
+      return prompt;
+    }
+    const parsed = JSON.parse(content);
+    const refined = String(parsed?.prompt ?? '').trim();
+    return refined || prompt;
+  } catch (error) {
+    return prompt;
+  }
 }
 
 async function callOpenAiImage(prompt, timeoutMs = OPENAI_IMAGE_TIMEOUT_MS) {
@@ -395,7 +437,7 @@ async function attachRecipeImages(recipes, baseUrl) {
     let imageUrl;
     if (OPENAI_API_KEY) {
       try {
-        const prompt = `High-quality food photo of ${title}.`;
+        const prompt = await polishImagePrompt(`High-quality food photo of ${title}.`);
         const generated = await callOpenAiImage(prompt);
         if (generated?.kind === 'url') {
           imageUrl = generated.data;
@@ -459,7 +501,7 @@ async function processOpenAiImageQueue() {
 
 async function attemptOpenAiImage({ cacheKey, normalized, query, baseUrl }) {
   try {
-    const prompt = `High-quality food photo of ${buildImageQuery(query)}.`;
+    const prompt = await polishImagePrompt(`High-quality food photo of ${buildImageQuery(query)}.`);
     const generated = await callOpenAiImage(prompt);
     if (!generated) {
       return;
@@ -508,7 +550,10 @@ async function handleRecipes(req, res, body) {
   }
 
   console.log(`[ai:recipes] request start prompt="${prompt.slice(0, 80)}" cuisines=${cuisines.join(',') || 'none'}`);
-  const chat = await callOpenAiChat(buildPrompt({ prompt, cuisines, count }));
+  const chat = await callOpenAiChat({
+    prompt: buildPrompt({ prompt, cuisines, count }),
+    model: OPENAI_RECIPE_MODEL,
+  });
   const content = chat?.choices?.[0]?.message?.content;
   if (!content) {
     sendJson(res, 500, { error: 'OpenAI response missing content.' });

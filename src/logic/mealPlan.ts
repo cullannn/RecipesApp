@@ -8,6 +8,7 @@ type PlanOptions = {
   deals: DealItem[];
   pinnedRecipeIds?: string[];
   constraints?: MealPlan['constraints'];
+  favoriteStores?: string[];
 };
 
 function buildPlanId(): string {
@@ -42,7 +43,19 @@ function applyConstraints(recipes: Recipe[], constraints?: MealPlan['constraints
 type SelectionResult = {
   recipes: Recipe[];
   totalScore: number;
+  matchedDealsCount: number;
 };
+
+function getRecipeMatchedDeals(recipe: Recipe, deals: DealItem[]): Set<string> {
+  const matched = new Set<string>();
+  for (const ingredient of recipe.ingredients) {
+    const deal = deals.find((candidate) => matchDealToIngredient(candidate, ingredient.name));
+    if (deal) {
+      matched.add(deal.id);
+    }
+  }
+  return matched;
+}
 
 function selectRecipesForDeals(options: {
   mealsRequested: number;
@@ -84,6 +97,8 @@ function selectRecipesForDeals(options: {
   const selectedIngredients = new Set<string>();
   const coveredDealIngredients = new Set<string>();
 
+  const hasDealMatch = (recipe: Recipe) => getRecipeMatchedDeals(recipe, deals).size > 0;
+
   const addRecipe = (recipe: Recipe) => {
     selected.push(recipe);
     recipe.ingredients.forEach((ingredient) => {
@@ -106,11 +121,17 @@ function selectRecipesForDeals(options: {
     }
   }
 
+  const matchingCandidates = remaining.filter((recipe) => hasDealMatch(recipe));
+  const primaryPool = matchingCandidates.length >= mealsRequested ? matchingCandidates : remaining;
+
   while (selected.length < mealsRequested && remaining.length > 0) {
+    if (primaryPool.length === 0) {
+      break;
+    }
     let bestIndex = 0;
     let bestScore = Number.NEGATIVE_INFINITY;
-    for (let i = 0; i < remaining.length; i += 1) {
-      const recipe = remaining[i];
+    for (let i = 0; i < primaryPool.length; i += 1) {
+      const recipe = primaryPool[i];
       const ingredientNames = recipe.ingredients
         .map((ingredient) => normalizeName(ingredient.name))
         .filter(Boolean);
@@ -131,7 +152,11 @@ function selectRecipesForDeals(options: {
         bestIndex = i;
       }
     }
-    const [chosen] = remaining.splice(bestIndex, 1);
+    const [chosen] = primaryPool.splice(bestIndex, 1);
+    const remainingIndex = remaining.findIndex((recipe) => recipe.id === chosen.id);
+    if (remainingIndex !== -1) {
+      remaining.splice(remainingIndex, 1);
+    }
     addRecipe(chosen);
   }
 
@@ -145,7 +170,10 @@ function selectRecipesForDeals(options: {
       }),
     0
   );
-  return { recipes: selected, totalScore };
+  const matchedDealsCount = selected.reduce((count, recipe) => {
+    return count + getRecipeMatchedDeals(recipe, deals).size;
+  }, 0);
+  return { recipes: selected, totalScore, matchedDealsCount };
 }
 
 function pickBestStore(deals: DealItem[], recipes: Recipe[], options: {
@@ -154,9 +182,11 @@ function pickBestStore(deals: DealItem[], recipes: Recipe[], options: {
   dietaryPrefs?: string[];
   cuisineThemes?: string[];
   aiPrompt?: string;
+  favoriteStores?: string[];
 }): { store?: string; selection: SelectionResult } {
   if (deals.length === 0) {
     return {
+      store: options.favoriteStores?.[0],
       selection: selectRecipesForDeals({
         mealsRequested: options.mealsRequested,
         recipes,
@@ -177,6 +207,9 @@ function pickBestStore(deals: DealItem[], recipes: Recipe[], options: {
 
   let bestStore: string | undefined;
   let bestSelection: SelectionResult | undefined;
+  const favoriteOrder = new Map(
+    (options.favoriteStores ?? []).map((store, index) => [normalizeName(store), index])
+  );
   for (const [store, storeDeals] of dealsByStore.entries()) {
     const selection = selectRecipesForDeals({
       mealsRequested: options.mealsRequested,
@@ -187,10 +220,18 @@ function pickBestStore(deals: DealItem[], recipes: Recipe[], options: {
       cuisineThemes: options.cuisineThemes,
       aiPrompt: options.aiPrompt,
     });
+    const storeRank = favoriteOrder.get(normalizeName(store));
+    const bestRank = bestStore ? favoriteOrder.get(normalizeName(bestStore)) : undefined;
     if (
       !bestSelection ||
-      selection.totalScore > bestSelection.totalScore ||
-      (selection.totalScore === bestSelection.totalScore && store.localeCompare(bestStore ?? '') < 0)
+      selection.matchedDealsCount > bestSelection.matchedDealsCount ||
+      (selection.matchedDealsCount === bestSelection.matchedDealsCount &&
+        selection.totalScore > bestSelection.totalScore) ||
+      (selection.matchedDealsCount === bestSelection.matchedDealsCount &&
+        selection.totalScore === bestSelection.totalScore &&
+        ((storeRank !== undefined && bestRank !== undefined && storeRank < bestRank) ||
+          (storeRank !== undefined && bestRank === undefined) ||
+          (storeRank === undefined && bestRank === undefined && store.localeCompare(bestStore ?? '') < 0)))
     ) {
       bestSelection = selection;
       bestStore = store;
@@ -198,8 +239,8 @@ function pickBestStore(deals: DealItem[], recipes: Recipe[], options: {
   }
 
   return {
-    store: bestStore,
-    selection: bestSelection ?? { recipes: [], totalScore: 0 },
+    store: bestSelection && bestSelection.matchedDealsCount > 0 ? bestStore : undefined,
+    selection: bestSelection ?? { recipes: [], totalScore: 0, matchedDealsCount: 0 },
   };
 }
 
@@ -216,6 +257,7 @@ export function generateMealPlan(options: PlanOptions): MealPlan {
     dietaryPrefs,
     cuisineThemes,
     aiPrompt,
+    favoriteStores: options.favoriteStores,
   });
 
   return {
