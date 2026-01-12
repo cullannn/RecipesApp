@@ -1,5 +1,5 @@
 import type { DealItem, DealsProvider, DealsQuery } from './dealsProvider';
-import { normalizePostalCode } from '@/src/utils/postalCode';
+import { isGtaPostalCode, normalizePostalCode } from '@/src/utils/postalCode';
 
 import foodBasics from '@/src/fixtures/deals/toronto/food-basics.json';
 import freshco from '@/src/fixtures/deals/toronto/freshco.json';
@@ -42,7 +42,7 @@ export const mockDealsProvider: DealsProvider = {
     if (!normalizedPostal) {
       return [];
     }
-    if (!normalizedPostal.startsWith('M')) {
+    if (!isGtaPostalCode(normalizedPostal)) {
       return [];
     }
     return applyFilters(allDeals, query);

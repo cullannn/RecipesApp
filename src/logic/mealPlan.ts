@@ -50,14 +50,26 @@ function selectRecipesForDeals(options: {
   deals: DealItem[];
   pinnedRecipeIds: string[];
   dietaryPrefs?: string[];
+  cuisineThemes?: string[];
+  aiPrompt?: string;
 }): SelectionResult {
-  const { mealsRequested, recipes, deals, pinnedRecipeIds, dietaryPrefs } = options;
+  const { mealsRequested, recipes, deals, pinnedRecipeIds } = options;
+  const normalizedDealIngredients = deals.map((deal) => normalizeName(deal.title)).filter(Boolean);
   const pinned = recipes.filter((recipe) => pinnedRecipeIds.includes(recipe.id));
   const remaining = recipes
     .filter((recipe) => !pinnedRecipeIds.includes(recipe.id))
     .sort((a, b) => {
       const scoreDiff =
-        scoreRecipe(b, deals, dietaryPrefs) - scoreRecipe(a, deals, dietaryPrefs);
+        scoreRecipe(b, deals, {
+          dietary: options.dietaryPrefs,
+          cuisines: options.cuisineThemes,
+          prompt: options.aiPrompt,
+        }) -
+        scoreRecipe(a, deals, {
+          dietary: options.dietaryPrefs,
+          cuisines: options.cuisineThemes,
+          prompt: options.aiPrompt,
+        });
       if (scoreDiff !== 0) {
         return scoreDiff;
       }
@@ -69,23 +81,68 @@ function selectRecipesForDeals(options: {
     });
 
   const selected: Recipe[] = [];
+  const selectedIngredients = new Set<string>();
+  const coveredDealIngredients = new Set<string>();
+
+  const addRecipe = (recipe: Recipe) => {
+    selected.push(recipe);
+    recipe.ingredients.forEach((ingredient) => {
+      const normalized = normalizeName(ingredient.name);
+      if (normalized) {
+        selectedIngredients.add(normalized);
+      }
+      if (normalized && normalizedDealIngredients.includes(normalized)) {
+        coveredDealIngredients.add(normalized);
+      }
+    });
+  };
+
   for (const recipe of pinned) {
     if (selected.length >= mealsRequested) {
       break;
     }
     if (!selected.find((existing) => existing.id === recipe.id)) {
-      selected.push(recipe);
+      addRecipe(recipe);
     }
   }
-  for (const recipe of remaining) {
-    if (selected.length >= mealsRequested) {
-      break;
+
+  while (selected.length < mealsRequested && remaining.length > 0) {
+    let bestIndex = 0;
+    let bestScore = Number.NEGATIVE_INFINITY;
+    for (let i = 0; i < remaining.length; i += 1) {
+      const recipe = remaining[i];
+      const ingredientNames = recipe.ingredients
+        .map((ingredient) => normalizeName(ingredient.name))
+        .filter(Boolean);
+      const overlapCount = ingredientNames.filter((name) => selectedIngredients.has(name)).length;
+      const newIngredientCount = ingredientNames.filter((name) => !selectedIngredients.has(name)).length;
+      const newDealCoverage = ingredientNames.filter(
+        (name) => normalizedDealIngredients.includes(name) && !coveredDealIngredients.has(name)
+      ).length;
+      const baseScore = scoreRecipe(recipe, deals, {
+        dietary: options.dietaryPrefs,
+        cuisines: options.cuisineThemes,
+        prompt: options.aiPrompt,
+      });
+      const reuseScore = overlapCount * 2 + newDealCoverage * 3 - newIngredientCount;
+      const candidateScore = baseScore + reuseScore;
+      if (candidateScore > bestScore) {
+        bestScore = candidateScore;
+        bestIndex = i;
+      }
     }
-    selected.push(recipe);
+    const [chosen] = remaining.splice(bestIndex, 1);
+    addRecipe(chosen);
   }
 
   const totalScore = selected.reduce(
-    (sum, recipe) => sum + scoreRecipe(recipe, deals, dietaryPrefs),
+    (sum, recipe) =>
+      sum +
+      scoreRecipe(recipe, deals, {
+        dietary: options.dietaryPrefs,
+        cuisines: options.cuisineThemes,
+        prompt: options.aiPrompt,
+      }),
     0
   );
   return { recipes: selected, totalScore };
@@ -95,6 +152,8 @@ function pickBestStore(deals: DealItem[], recipes: Recipe[], options: {
   mealsRequested: number;
   pinnedRecipeIds: string[];
   dietaryPrefs?: string[];
+  cuisineThemes?: string[];
+  aiPrompt?: string;
 }): { store?: string; selection: SelectionResult } {
   if (deals.length === 0) {
     return {
@@ -104,6 +163,8 @@ function pickBestStore(deals: DealItem[], recipes: Recipe[], options: {
         deals,
         pinnedRecipeIds: options.pinnedRecipeIds,
         dietaryPrefs: options.dietaryPrefs,
+        cuisineThemes: options.cuisineThemes,
+        aiPrompt: options.aiPrompt,
       }),
     };
   }
@@ -123,6 +184,8 @@ function pickBestStore(deals: DealItem[], recipes: Recipe[], options: {
       deals: storeDeals,
       pinnedRecipeIds: options.pinnedRecipeIds,
       dietaryPrefs: options.dietaryPrefs,
+      cuisineThemes: options.cuisineThemes,
+      aiPrompt: options.aiPrompt,
     });
     if (
       !bestSelection ||
@@ -144,11 +207,15 @@ export function generateMealPlan(options: PlanOptions): MealPlan {
   const { mealsRequested, deals, pinnedRecipeIds = [], constraints } = options;
   const filteredRecipes = applyConstraints(options.recipes, constraints);
   const dietaryPrefs = constraints?.dietary;
+  const cuisineThemes = constraints?.cuisineThemes;
+  const aiPrompt = constraints?.aiPrompt;
 
   const { store, selection } = pickBestStore(deals, filteredRecipes, {
     mealsRequested,
     pinnedRecipeIds,
     dietaryPrefs,
+    cuisineThemes,
+    aiPrompt,
   });
 
   return {

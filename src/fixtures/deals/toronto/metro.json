@@ -8,7 +8,8 @@
     "category": "meat",
     "validFrom": "2026-01-01",
     "validTo": "2026-01-07",
-    "location": "M5V"
+    "location": "M5V",
+    "wasPrice": 6.99
   },
   {
     "id": "mt-002",
@@ -19,7 +20,8 @@
     "category": "meat",
     "validFrom": "2026-01-01",
     "validTo": "2026-01-07",
-    "location": "M5V"
+    "location": "M5V",
+    "wasPrice": 6.99
   },
   {
     "id": "mt-003",
@@ -30,7 +32,8 @@
     "category": "dairy",
     "validFrom": "2026-01-01",
     "validTo": "2026-01-07",
-    "location": "M5V"
+    "location": "M5V",
+    "wasPrice": 5.99
   },
   {
     "id": "mt-004",
@@ -41,7 +44,8 @@
     "category": "produce",
     "validFrom": "2026-01-01",
     "validTo": "2026-01-07",
-    "location": "M5V"
+    "location": "M5V",
+    "wasPrice": 2.99
   },
   {
     "id": "mt-005",
@@ -52,7 +56,8 @@
     "category": "produce",
     "validFrom": "2026-01-01",
     "validTo": "2026-01-07",
-    "location": "M5V"
+    "location": "M5V",
+    "wasPrice": 1.99
   },
   {
     "id": "mt-006",
@@ -63,7 +68,8 @@
     "category": "pantry",
     "validFrom": "2026-01-01",
     "validTo": "2026-01-07",
-    "location": "M5V"
+    "location": "M5V",
+    "wasPrice": 1.99
   },
   {
     "id": "mt-007",
@@ -74,7 +80,8 @@
     "category": "pantry",
     "validFrom": "2026-01-01",
     "validTo": "2026-01-07",
-    "location": "M5V"
+    "location": "M5V",
+    "wasPrice": 3.99
   },
   {
     "id": "mt-008",
@@ -85,7 +92,8 @@
     "category": "frozen",
     "validFrom": "2026-01-01",
     "validTo": "2026-01-07",
-    "location": "M5V"
+    "location": "M5V",
+    "wasPrice": 6.99
   },
   {
     "id": "mt-009",
@@ -96,7 +104,8 @@
     "category": "snacks",
     "validFrom": "2026-01-01",
     "validTo": "2026-01-07",
-    "location": "M5V"
+    "location": "M5V",
+    "wasPrice": 3.99
   },
   {
     "id": "mt-010",
@@ -107,6 +116,7 @@
     "category": "beverages",
     "validFrom": "2026-01-01",
     "validTo": "2026-01-07",
-    "location": "M5V"
+    "location": "M5V",
+    "wasPrice": 4.99
   }
 ]

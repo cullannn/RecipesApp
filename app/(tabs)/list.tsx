@@ -1,6 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Pressable, SectionList, Share, StyleSheet, Switch, Text, View } from 'react-native';
+import { Pressable, SectionList, Share, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Button, Checkbox, Switch } from 'react-native-paper';
 
+import { PatternBackground } from '@/components/pattern-background';
+import { GradientTitle } from '@/components/gradient-title';
 import { useDeals } from '@/src/hooks/useDeals';
 import { buildGroceryList } from '@/src/logic/mealPlan';
 import { useGroceryListStore } from '@/src/state/useGroceryListStore';
@@ -102,96 +106,106 @@ export default function GroceryListScreen() {
 
   if (!plan) {
     return (
-      <View style={styles.container}>
-        <Text style={styles.title}>Grocery list</Text>
-        <Text style={styles.subtitle}>Generate a meal plan to build your list.</Text>
+      <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+        <View style={styles.contentSurface}>
+          <PatternBackground />
+          <GradientTitle text="List" style={styles.title} />
+          <Text style={styles.subtitle}>Generate a plan to build your list.</Text>
 
-        <View style={styles.placeholderCard}>
-          <Text style={styles.placeholderTitle}>No items yet</Text>
-          <Text style={styles.placeholderText}>
-            Once your plan is ready, we will combine ingredients and highlight deals.
-          </Text>
+          <View style={styles.placeholderCard}>
+            <Text style={styles.placeholderTitle}>No items yet</Text>
+            <Text style={styles.placeholderText}>
+              Once your plan is ready, we will combine ingredients and highlight deals.
+            </Text>
+          </View>
         </View>
-      </View>
+      </SafeAreaView>
     );
   }
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Grocery list</Text>
-      {plan.selectedStore ? (
-        <Text style={styles.storeNote}>Shop at: {plan.selectedStore}</Text>
-      ) : null}
-      <View style={styles.controlsRow}>
-        <View style={styles.switchRow}>
-          <Text style={styles.switchLabel}>Sort by store</Text>
-          <Switch value={sortByStore} onValueChange={setSortByStore} />
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+      <View style={styles.contentSurface}>
+        <PatternBackground />
+        <GradientTitle text="List" style={styles.title} />
+        {plan.selectedStore ? (
+          <Text style={styles.storeNote}>Shop at {plan.selectedStore}</Text>
+        ) : null}
+        <View style={styles.controlsRow}>
+          <View style={styles.switchRow}>
+            <Text style={styles.switchLabel}>Sort by store</Text>
+            <Switch value={sortByStore} onValueChange={setSortByStore} />
+          </View>
+          <View style={styles.actionsRow}>
+            <Button mode="outlined" onPress={clearChecked} style={styles.secondaryButton}>
+              Clear checks
+            </Button>
+            <Button mode="contained" onPress={shareList} style={styles.primaryButton}>
+              Share
+            </Button>
+          </View>
         </View>
-        <View style={styles.actionsRow}>
-          <Pressable style={styles.secondaryButton} onPress={clearChecked}>
-            <Text style={styles.secondaryButtonText}>Clear checks</Text>
-          </Pressable>
-          <Pressable style={styles.primaryButton} onPress={shareList}>
-            <Text style={styles.primaryButtonText}>Share</Text>
-          </Pressable>
-        </View>
-      </View>
 
-      <SectionList
-        sections={sections}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.list}
-        ListEmptyComponent={
-          <Text style={styles.placeholderText}>
-            {dealsQuery.isLoading ? 'Loading deals...' : 'No items found for this plan.'}
-          </Text>
-        }
-        renderSectionHeader={({ section }) => (
-          <Text style={styles.sectionHeader}>{section.title}</Text>
-        )}
-        renderItem={({ item }) => (
-          <Pressable style={styles.itemRow} onPress={() => toggleChecked(item.id)}>
-            <View style={[styles.checkbox, item.checked && styles.checkboxChecked]}>
-              {item.checked ? <Text style={styles.checkboxLabel}>✓</Text> : null}
-            </View>
-            <View style={styles.itemText}>
-              <Text style={[styles.itemName, item.checked && styles.itemChecked]}>
-                {item.name}
-              </Text>
-              <Text style={styles.itemMeta}>
-                Buy: {item.totalQuantity}
-                {item.matchedDeal
-                  ? ` • ${item.matchedDeal.store} $${item.matchedDeal.price.toFixed(2)}`
-                  : plan.selectedStore
-                    ? ` • ${plan.selectedStore}`
-                    : ''}
-              </Text>
-            </View>
-          </Pressable>
-        )}
-      />
-    </View>
+        <SectionList
+          sections={sections}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.list}
+          ListEmptyComponent={
+            <Text style={styles.placeholderText}>
+              {dealsQuery.isLoading ? 'Loading deals...' : 'No items found for this plan.'}
+            </Text>
+          }
+          renderSectionHeader={({ section }) => (
+            <Text style={styles.sectionHeader}>{section.title}</Text>
+          )}
+          renderItem={({ item }) => (
+            <Pressable style={styles.itemRow} onPress={() => toggleChecked(item.id)}>
+              <Checkbox status={item.checked ? 'checked' : 'unchecked'} />
+              <View style={styles.itemText}>
+                <Text style={[styles.itemName, item.checked && styles.itemChecked]}>
+                  {item.name}
+                </Text>
+                <Text style={styles.itemMeta}>
+                  Buy: {item.totalQuantity}
+                  {item.matchedDeal
+                    ? ` • ${item.matchedDeal.store} $${item.matchedDeal.price.toFixed(2)}`
+                    : plan.selectedStore
+                      ? ` • ${plan.selectedStore}`
+                      : ''}
+                </Text>
+              </View>
+            </Pressable>
+          )}
+        />
+      </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 20,
+    padding: 16,
+    backgroundColor: '#FFFFFF',
+  },
+  contentSurface: {
+    flex: 1,
+    backgroundColor: '#D9DEE6',
   },
   title: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: '700',
     marginBottom: 6,
+    color: '#1F1F1F',
   },
   subtitle: {
-    fontSize: 14,
-    color: '#555',
+    fontSize: 13,
+    color: '#5F6368',
     marginBottom: 16,
   },
   storeNote: {
     fontSize: 13,
-    color: '#555',
+    color: '#5F6368',
     marginBottom: 10,
   },
   controlsRow: {
@@ -204,42 +218,27 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   switchLabel: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '600',
+    color: '#1F1F1F',
   },
   actionsRow: {
     flexDirection: 'row',
     gap: 8,
   },
   primaryButton: {
-    backgroundColor: '#0b6e4f',
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    borderRadius: 10,
-  },
-  primaryButtonText: {
-    color: '#fff',
-    fontWeight: '600',
-    fontSize: 13,
+    marginRight: 4,
   },
   secondaryButton: {
-    backgroundColor: '#f1f1f1',
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    borderRadius: 10,
-  },
-  secondaryButtonText: {
-    color: '#333',
-    fontWeight: '600',
-    fontSize: 13,
+    marginRight: 4,
   },
   list: {
     paddingBottom: 24,
   },
   sectionHeader: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '700',
-    color: '#333',
+    color: '#1F1F1F',
     marginTop: 12,
     marginBottom: 6,
   },
@@ -248,33 +247,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-  },
-  checkbox: {
-    width: 22,
-    height: 22,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: '#bbb',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  checkboxChecked: {
-    backgroundColor: '#0b6e4f',
-    borderColor: '#0b6e4f',
-  },
-  checkboxLabel: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: '700',
+    borderBottomColor: '#E0E0E0',
   },
   itemText: {
     flex: 1,
   },
   itemName: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
+    color: '#1F1F1F',
   },
   itemChecked: {
     textDecorationLine: 'line-through',
@@ -282,22 +263,23 @@ const styles = StyleSheet.create({
   },
   itemMeta: {
     fontSize: 12,
-    color: '#666',
+    color: '#5F6368',
   },
   placeholderCard: {
     padding: 16,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#eee',
-    backgroundColor: '#fff',
+    borderColor: '#E0E0E0',
+    backgroundColor: '#FFFFFF',
   },
   placeholderTitle: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
     marginBottom: 4,
+    color: '#1F1F1F',
   },
   placeholderText: {
     fontSize: 13,
-    color: '#666',
+    color: '#5F6368',
   },
 });

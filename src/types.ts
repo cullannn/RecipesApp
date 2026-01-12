@@ -3,6 +3,7 @@ export type DealItem = {
   title: string;
   store: string;
   price: number;
+  wasPrice?: number;
   unit: string;
   category: string;
   imageUrl?: string;
@@ -40,6 +41,12 @@ export type Recipe = {
   categories?: string[];
 };
 
+export type RecipeHistoryEntry = {
+  id: string;
+  createdAt: string;
+  recipes: Recipe[];
+};
+
 export type MealPlan = {
   id: string;
   mealsRequested: number;
@@ -48,6 +55,8 @@ export type MealPlan = {
   selectedStore?: string;
   constraints?: {
     dietary?: string[];
+    cuisineThemes?: string[];
+    aiPrompt?: string;
     maxCookTimeMins?: number;
     servings?: number;
   };

@@ -1,7 +1,11 @@
 import { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
+import { Button, Chip, TextInput } from 'react-native-paper';
 
+import { GradientTitle } from '@/components/gradient-title';
+import { PatternBackground } from '@/components/pattern-background';
 import { usePreferencesStore } from '@/src/state/usePreferencesStore';
 import { formatPostalCode, isValidCanadianPostalCode, normalizePostalCode } from '@/src/utils/postalCode';
 
@@ -53,101 +57,149 @@ export default function OnboardingScreen() {
     setAllergies(allergiesInput.trim());
     const parsedHousehold = Number.parseInt(householdInput, 10);
     setHouseholdSize(Number.isFinite(parsedHousehold) ? parsedHousehold : undefined);
-    router.replace('/(tabs)/deals');
+    router.replace('/(tabs)/settings');
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>Welcome to DealChef</Text>
-      <Text style={styles.subtitle}>Tell us where you shop so we can find Toronto deals.</Text>
-
-      <View style={styles.section}>
-        <Text style={styles.label}>Postal code</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="M5V 2T6"
-          value={postalInput}
-          autoCapitalize="characters"
-          onChangeText={(value) => setPostalInput(formatPostalCode(value))}
-          maxLength={7}
-        />
-        {error ? <Text style={styles.error}>{error}</Text> : null}
+    <SafeAreaView style={styles.screen} edges={['top', 'left', 'right']}>
+      <View style={styles.headerBar}>
+        <GradientTitle text="Your Kitchen" style={styles.title} />
       </View>
+      <View style={styles.contentSurface}>
+        <PatternBackground />
+        <ScrollView contentContainerStyle={styles.container}>
+          <View style={styles.card}>
+            <Text style={styles.subtitle}>Set up your kitchen</Text>
 
-      <View style={styles.section}>
-        <Text style={styles.label}>Dietary preferences</Text>
-        <View style={styles.chipRow}>
-          {dietaryOptions.map((option) => {
-            const active = selectedDietary.includes(option);
-            return (
-              <Pressable
-                key={option}
-                style={[styles.chip, active && styles.chipActive]}
-                onPress={() => toggleDietary(option)}>
-                <Text style={styles.chipText}>{option}</Text>
-              </Pressable>
-            );
-          })}
-        </View>
+            <View style={styles.section}>
+              <Text style={styles.label}>Postal code</Text>
+              <TextInput
+                mode="outlined"
+                style={styles.input}
+                placeholder="M5V 2T6"
+                value={postalInput}
+                autoCapitalize="characters"
+                onChangeText={(value) => setPostalInput(formatPostalCode(value))}
+                maxLength={7}
+                textColor="#5F6368"
+                placeholderTextColor="#B0B6BC"
+              />
+              {error ? <Text style={styles.error}>{error}</Text> : null}
+            </View>
+
+            <View style={styles.section}>
+              <Text style={styles.label}>Dietary preferences</Text>
+              <View style={styles.chipRow}>
+                {dietaryOptions.map((option) => {
+                  const active = selectedDietary.includes(option);
+                  return (
+                    <Chip
+                      key={option}
+                      selected={active}
+                      mode="outlined"
+                      onPress={() => toggleDietary(option)}
+                      style={[styles.chip, active && styles.chipSelected]}
+                      selectedColor="#1F1F1F">
+                      {option}
+                    </Chip>
+                  );
+                })}
+              </View>
+            </View>
+
+            <View style={styles.section}>
+              <Text style={styles.label}>Allergies</Text>
+              <TextInput
+                mode="outlined"
+                style={styles.input}
+                placeholder="Peanuts, shellfish, etc."
+                value={allergiesInput}
+                onChangeText={setAllergiesInput}
+                textColor="#5F6368"
+                placeholderTextColor="#B0B6BC"
+              />
+            </View>
+
+            <View style={styles.section}>
+              <Text style={styles.label}>Household size (optional)</Text>
+              <TextInput
+                mode="outlined"
+                style={styles.input}
+                placeholder="2"
+                value={householdInput}
+                keyboardType="number-pad"
+                onChangeText={setHouseholdInput}
+                textColor="#5F6368"
+                placeholderTextColor="#B0B6BC"
+              />
+            </View>
+
+            <Button
+              mode="contained"
+              onPress={onSave}
+              buttonColor="#1B7F3A"
+              textColor="#FFFFFF"
+              style={styles.primaryButton}>
+              Save preferences
+            </Button>
+          </View>
+        </ScrollView>
       </View>
-
-      <View style={styles.section}>
-        <Text style={styles.label}>Allergies</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Peanuts, shellfish, etc."
-          value={allergiesInput}
-          onChangeText={setAllergiesInput}
-        />
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.label}>Household size (optional)</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="2"
-          value={householdInput}
-          keyboardType="number-pad"
-          onChangeText={setHouseholdInput}
-        />
-      </View>
-
-      <Pressable style={styles.primaryButton} onPress={onSave}>
-        <Text style={styles.primaryButtonText}>Save preferences</Text>
-      </Pressable>
-    </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+  },
+  headerBar: {
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 16,
+    paddingBottom: 8,
+  },
+  contentSurface: {
+    flex: 1,
+    backgroundColor: '#D9DEE6',
+    padding: 16,
+  },
   container: {
-    padding: 24,
+    paddingBottom: 24,
+  },
+  card: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#E6E9EF',
+    padding: 16,
   },
   title: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: '700',
-    marginBottom: 8,
+    marginBottom: 6,
+    color: '#1F1F1F',
   },
   subtitle: {
-    fontSize: 14,
-    color: '#555',
-    marginBottom: 20,
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1B7F3A',
+    marginBottom: 12,
   },
   section: {
     marginBottom: 20,
   },
   label: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '600',
     marginBottom: 8,
+    color: '#5F6368',
   },
   input: {
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: '#E0E0E0',
     borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    backgroundColor: '#fff',
   },
   chipRow: {
     flexDirection: 'row',
@@ -155,30 +207,16 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   chip: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 16,
-    backgroundColor: '#f1f1f1',
+    backgroundColor: '#F1F3F4',
   },
-  chipActive: {
-    backgroundColor: '#d6f2e9',
-  },
-  chipText: {
-    fontSize: 13,
+  chipSelected: {
+    backgroundColor: '#D8EFDF',
   },
   error: {
     color: '#c0392b',
     marginTop: 6,
   },
   primaryButton: {
-    backgroundColor: '#0b6e4f',
-    paddingVertical: 12,
-    borderRadius: 10,
-    alignItems: 'center',
     marginTop: 8,
-  },
-  primaryButtonText: {
-    color: '#fff',
-    fontWeight: '600',
   },
 });

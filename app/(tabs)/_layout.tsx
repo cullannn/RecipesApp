@@ -3,16 +3,39 @@ import React from 'react';
 
 import { HapticTab } from '@/components/haptic-tab';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
-
+  useColorScheme();
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
+        tabBarActiveTintColor: '#1B7F3A',
+        tabBarInactiveTintColor: '#8A9096',
+        tabBarLabelStyle: {
+          fontSize: 11,
+          fontWeight: '600',
+        },
+        tabBarStyle: {
+          backgroundColor: '#FFFFFF',
+          borderTopWidth: 0,
+          height: 68,
+          paddingBottom: 0,
+          paddingTop: 6,
+          paddingHorizontal: 24,
+          marginHorizontal: 0,
+          marginBottom: 0,
+          borderRadius: 0,
+          overflow: 'visible',
+          shadowColor: '#1A73E8',
+          shadowOpacity: 0.12,
+          shadowRadius: 14,
+          shadowOffset: { width: 0, height: 6 },
+          elevation: 8,
+        },
+        tabBarItemStyle: {
+          borderRadius: 16,
+        },
         headerShown: false,
         tabBarButton: HapticTab,
       }}>
@@ -24,13 +47,6 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="recipes"
-        options={{
-          title: 'Recipes',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="fork.knife" color={color} />,
-        }}
-      />
-      <Tabs.Screen
         name="plan"
         options={{
           title: 'Plan',
@@ -38,10 +54,10 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="list"
+        name="recipes"
         options={{
-          title: 'List',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="list.bullet" color={color} />,
+          title: 'Recipes',
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="fork.knife" color={color} />,
         }}
       />
       <Tabs.Screen
@@ -51,6 +67,10 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="gearshape.fill" color={color} />,
         }}
       />
+      <Tabs.Screen name="index" options={{ href: null }} />
+      <Tabs.Screen name="list" options={{ href: null }} />
+      <Tabs.Screen name="explore" options={{ href: null }} />
+      <Tabs.Screen name="preferences" options={{ href: null }} />
     </Tabs>
   );
 }

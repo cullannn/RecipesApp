@@ -1,5 +1,5 @@
 import type { DealItem, DealsProvider, DealsQuery } from './dealsProvider';
-import { normalizePostalCode } from '@/src/utils/postalCode';
+import { isGtaPostalCode, normalizePostalCode } from '@/src/utils/postalCode';
 
 import bestcoDeals from '@/src/fixtures/deals/toronto/bestco.json';
 
@@ -9,7 +9,7 @@ export const bestcoDealsProvider: DealsProvider = {
     if (!normalizedPostal) {
       return [];
     }
-    if (!normalizedPostal.startsWith('M')) {
+    if (!isGtaPostalCode(normalizedPostal)) {
       return [];
     }
     return bestcoDeals;

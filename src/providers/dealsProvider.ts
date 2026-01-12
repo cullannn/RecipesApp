@@ -6,7 +6,7 @@ export type DealsProvider = {
   searchDeals: (query: DealsQuery) => Promise<DealItem[]>;
 };
 
-export type DealsProviderId = 'mock' | 'flipp' | 'bestco';
+export type DealsProviderId = 'mock' | 'flipp' | 'bestco' | 'local-scrape';
 
 const providerId = (process.env.EXPO_PUBLIC_USE_DEALS_PROVIDER ??
   process.env.USE_DEALS_PROVIDER ??
@@ -18,6 +18,9 @@ export function getDealsProviderId(): DealsProviderId {
   }
   if (providerId === 'bestco') {
     return 'bestco';
+  }
+  if (providerId === 'local-scrape') {
+    return 'local-scrape';
   }
   return 'mock';
 }

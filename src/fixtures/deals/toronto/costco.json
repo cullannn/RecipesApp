@@ -8,7 +8,8 @@
     "category": "meat",
     "validFrom": "2026-01-01",
     "validTo": "2026-01-07",
-    "location": "M5V"
+    "location": "M5V",
+    "wasPrice": 9.99
   },
   {
     "id": "co-002",
@@ -19,7 +20,8 @@
     "category": "meat",
     "validFrom": "2026-01-01",
     "validTo": "2026-01-07",
-    "location": "M5V"
+    "location": "M5V",
+    "wasPrice": 22.99
   },
   {
     "id": "co-003",
@@ -30,7 +32,8 @@
     "category": "dairy",
     "validFrom": "2026-01-01",
     "validTo": "2026-01-07",
-    "location": "M5V"
+    "location": "M5V",
+    "wasPrice": 16.99
   },
   {
     "id": "co-004",
@@ -41,7 +44,8 @@
     "category": "produce",
     "validFrom": "2026-01-01",
     "validTo": "2026-01-07",
-    "location": "M5V"
+    "location": "M5V",
+    "wasPrice": 6.99
   },
   {
     "id": "co-005",
@@ -52,7 +56,8 @@
     "category": "produce",
     "validFrom": "2026-01-01",
     "validTo": "2026-01-07",
-    "location": "M5V"
+    "location": "M5V",
+    "wasPrice": 8.99
   },
   {
     "id": "co-006",
@@ -63,7 +68,8 @@
     "category": "pantry",
     "validFrom": "2026-01-01",
     "validTo": "2026-01-07",
-    "location": "M5V"
+    "location": "M5V",
+    "wasPrice": 12.99
   },
   {
     "id": "co-007",
@@ -74,7 +80,8 @@
     "category": "pantry",
     "validFrom": "2026-01-01",
     "validTo": "2026-01-07",
-    "location": "M5V"
+    "location": "M5V",
+    "wasPrice": 16.99
   },
   {
     "id": "co-008",
@@ -85,7 +92,8 @@
     "category": "frozen",
     "validFrom": "2026-01-01",
     "validTo": "2026-01-07",
-    "location": "M5V"
+    "location": "M5V",
+    "wasPrice": 23.99
   },
   {
     "id": "co-009",
@@ -96,7 +104,8 @@
     "category": "snacks",
     "validFrom": "2026-01-01",
     "validTo": "2026-01-07",
-    "location": "M5V"
+    "location": "M5V",
+    "wasPrice": 17.99
   },
   {
     "id": "co-010",
@@ -107,6 +116,7 @@
     "category": "household",
     "validFrom": "2026-01-01",
     "validTo": "2026-01-07",
-    "location": "M5V"
+    "location": "M5V",
+    "wasPrice": 12.99
   }
 ]

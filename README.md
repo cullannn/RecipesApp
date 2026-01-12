@@ -38,6 +38,42 @@ npm run ocr:bestco
 
 This writes OCR-parsed deals to `src/fixtures/deals/toronto/bestco.json`.
 
+## AI recipe prompt (optional)
+
+The Plan screen can generate extra recipes from a prompt via a local proxy server.
+
+1. Add `OPENAI_API_KEY` to `.env`.
+2. Start the proxy server:
+
+```bash
+node server/index.mjs
+```
+
+3. Set `EXPO_PUBLIC_AI_BASE_URL` to the server URL (use your machine IP for mobile).
+
+Defaults:
+- `OPENAI_MODEL` (default `gpt-4o-mini`)
+- `OPENAI_IMAGE_MODEL` (default `gpt-image-1`)
+
+Note: If you switch networks (e.g., to a phone hotspot), update `EXPO_PUBLIC_AI_BASE_URL` in `.env` to your new local IP and restart the server/Expo.
+
+## Local deals scraper (optional)
+
+Run a local background server that refreshes flyer deals hourly (file cache for now).
+
+1. Set `EXPO_PUBLIC_USE_DEALS_PROVIDER=local-scrape`.
+2. Start the server:
+
+```bash
+node server/deals-scraper.mjs
+```
+
+3. Set `EXPO_PUBLIC_DEALS_SERVER_URL` in `.env` if running on a different host/port.
+
+This will write cached results under `server/cache` and refresh automatically once per hour.
+
+Note: If you switch networks, update `EXPO_PUBLIC_DEALS_SERVER_URL` in `.env` to your new local IP and restart the server/Expo.
+
 ## Get a fresh project
 
 When you're ready, run:

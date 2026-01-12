@@ -1,20 +1,18 @@
-import { ScrollView, StyleSheet, Text, View, Pressable } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { useLocalSearchParams } from 'expo-router';
 
-import { useDeals } from '@/src/hooks/useDeals';
+import { useRemoteImage } from '@/src/hooks/useRemoteImage';
 import { useRecipes } from '@/src/hooks/useRecipes';
 import { useMealPlanStore } from '@/src/state/useMealPlanStore';
-import { usePreferencesStore } from '@/src/state/usePreferencesStore';
-import { matchDealToIngredient } from '@/src/utils/matching';
 
 export default function RecipeDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const recipes = useRecipes();
-  const recipe = recipes.find((item) => item.id === id);
-  const { postalCode } = usePreferencesStore();
-  const dealsQuery = useDeals({ postalCode });
-  const { pinnedRecipeIds, togglePinnedRecipe } = useMealPlanStore();
+  const { recipeHistory } = useMealPlanStore();
+  const recipe =
+    recipes.find((item) => item.id === id) ??
+    recipeHistory.flatMap((entry) => entry.recipes).find((item) => item.id === id);
 
   if (!recipe) {
     return (
@@ -24,33 +22,21 @@ export default function RecipeDetailScreen() {
     );
   }
 
-  const isPinned = pinnedRecipeIds.includes(recipe.id);
+  const heroImage = useRemoteImage(recipe.title, recipe.imageUrl ?? null, { kind: 'recipe' });
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      {recipe.imageUrl ? (
-        <Image source={{ uri: recipe.imageUrl }} style={styles.heroImage} />
-      ) : null}
+    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      {heroImage ? <Image source={{ uri: heroImage }} style={styles.heroImage} /> : null}
       <Text style={styles.title}>{recipe.title}</Text>
       <Text style={styles.meta}>
         {recipe.cookTimeMins} mins • Serves {recipe.servings}
       </Text>
-      <Pressable style={styles.primaryButton} onPress={() => togglePinnedRecipe(recipe.id)}>
-        <Text style={styles.primaryButtonText}>{isPinned ? 'Remove from plan' : 'Add to plan'}</Text>
-      </Pressable>
-
       <Text style={styles.sectionTitle}>Ingredients</Text>
-      {recipe.ingredients.map((ingredient, index) => {
-        const matched = dealsQuery.data?.some((deal) =>
-          matchDealToIngredient(deal, ingredient.name)
-        );
-        return (
-          <Text key={`${ingredient.name}-${index}`} style={styles.ingredient}>
-            {ingredient.quantity} {ingredient.unit} {ingredient.name}
-            {matched ? ' • deal' : ''}
-          </Text>
-        );
-      })}
+      {recipe.ingredients.map((ingredient, index) => (
+        <Text key={`${ingredient.name}-${index}`} style={styles.ingredient}>
+          {ingredient.quantity} {ingredient.unit} {ingredient.name}
+        </Text>
+      ))}
 
       <Text style={styles.sectionTitle}>Steps</Text>
       {recipe.steps.map((step, index) => (
@@ -64,12 +50,17 @@ export default function RecipeDetailScreen() {
 
 const styles = StyleSheet.create({
   container: {
-    padding: 20,
+    flex: 1,
+    backgroundColor: '#F7F8FA',
+  },
+  content: {
+    padding: 16,
+    paddingBottom: 32,
   },
   heroImage: {
     width: '100%',
     height: 220,
-    borderRadius: 12,
+    borderRadius: 16,
     marginBottom: 16,
   },
   centered: {
@@ -78,39 +69,31 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   title: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: '700',
     marginBottom: 6,
+    color: '#1F1F1F',
   },
   meta: {
-    fontSize: 14,
-    color: '#555',
+    fontSize: 13,
+    color: '#5F6368',
     marginBottom: 16,
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 14,
     fontWeight: '600',
-    marginTop: 20,
+    marginTop: 18,
     marginBottom: 8,
+    color: '#1F1F1F',
   },
   ingredient: {
-    fontSize: 14,
-    color: '#333',
+    fontSize: 13,
+    color: '#1F1F1F',
     marginBottom: 4,
   },
   step: {
-    fontSize: 14,
-    color: '#444',
+    fontSize: 13,
+    color: '#1F1F1F',
     marginBottom: 6,
-  },
-  primaryButton: {
-    backgroundColor: '#0b6e4f',
-    paddingVertical: 10,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  primaryButtonText: {
-    color: '#fff',
-    fontWeight: '600',
   },
 });
