@@ -179,7 +179,7 @@ const NON_GROCERY_RULES = [
   /hardware|tool|automotive|tire|car\b/,
   /patio|garden|outdoor|barbecue|bbq/,
   /kitchenware|cookware|appliance|maker|blender|mixer|kettle|toaster|microwave|oven|air\s*fryer|deep fryer|rice cooker|pressure cooker|slow cooker|utensil|cutlery|knife|skillet|wok|\bpan\b|\bpot\b/,
-  /ipad|galaxy\s*tab|smartphone|cell\s*phone|phone\s*case|laptop|macbook|surface|chromebook|monitor|screen|speaker|earbuds|camera|gaming|console|drone|smart\s*watch|wearable|desk|chair|printer|harman\s?kardon|sony|roku|apple\s?watch|samsung\s?galaxy/,
+  /\b(?:ipad|galaxy\s*tab|smartphone|cell\s*phone|phone\s*case|laptop|macbook|surface|chromebook|monitor|screen|speaker|earbuds|camera|gaming|console|drone|smart\s*watch|wearable|printer|harman\s?kardon|sony|roku|apple\s?watch|samsung\s?galaxy)\b/,
 ];
 
 const GENERIC_GROCERY_LABELS = new Set(['other', 'grocery', 'groceries', 'general', 'food', 'market']);
