@@ -231,22 +231,33 @@ function normalizeFlyertownNumericPrice(value) {
   return value;
 }
 
+function parsePriceText(value) {
+  if (!value) {
+    return null;
+  }
+  const cleaned = String(value)
+    .replace(/\b(now|was)\b/gi, '')
+    .replace(/save\b.*/gi, '')
+    .replace(/off\b.*/gi, '')
+    .replace(/[$¢]/g, '')
+    .trim();
+  return parsePrice(cleaned);
+}
+
 function parseFlyertownPrice(item) {
   if (typeof item?.current_price === 'number' && Number.isFinite(item.current_price)) {
     return normalizeFlyertownNumericPrice(item.current_price);
   }
-  const priceText =
-    item?.price_text ??
-    item?.pre_price_text ??
-    item?.sale_story ??
-    '';
-  const textPrice = parsePrice(priceText);
-  if (textPrice !== null) {
-    return textPrice;
+  const parsedPriceText = parsePriceText(item?.price_text);
+  if (parsedPriceText !== null) {
+    return parsedPriceText;
   }
   const description = String(item?.description ?? '');
-  if (description && /[$¢]/.test(description)) {
-    return parsePrice(description);
+  if (description && /[$¢]/.test(description) && !/save\b|off\b/i.test(description)) {
+    const descriptionPrice = parsePriceText(description);
+    if (descriptionPrice !== null) {
+      return descriptionPrice;
+    }
   }
   const unitMatch = description.match(/(\d+(?:\.\d+)?)\/(kg|lb)/i);
   if (unitMatch) {
@@ -260,6 +271,41 @@ function parseFlyertownPrice(item) {
     }
   }
   return null;
+}
+
+function parseFlyertownWasPrice(item, currentPrice) {
+  const candidates = [
+    parsePriceText(item?.pre_price_text),
+    parsePriceText(item?.sale_story),
+  ].filter((value) => value !== null);
+  if (candidates.length > 0) {
+    return candidates[0];
+  }
+  const saleStory = String(item?.sale_story ?? '');
+  const saveMatch = saleStory.match(/(?:save|off)\s*\$?(\d+(?:\.\d+)?)/i);
+  if (saveMatch && Number.isFinite(currentPrice)) {
+    const saveValue = Number.parseFloat(saveMatch[1]);
+    if (Number.isFinite(saveValue) && saveValue > 0) {
+      return Number.parseFloat((currentPrice + saveValue).toFixed(2));
+    }
+  }
+  const percentMatch = saleStory.match(/(\d+(?:\.\d+)?)%/);
+  if (percentMatch && Number.isFinite(currentPrice)) {
+    const percent = Number.parseFloat(percentMatch[1]);
+    if (Number.isFinite(percent) && percent > 0 && percent < 100) {
+      return Number.parseFloat((currentPrice / (1 - percent / 100)).toFixed(2));
+    }
+  }
+  return null;
+}
+
+function parseFlyertownPricing(item) {
+  const price = parseFlyertownPrice(item);
+  if (price === null) {
+    return { price: null, wasPrice: null };
+  }
+  const wasPrice = parseFlyertownWasPrice(item, price);
+  return { price, wasPrice };
 }
 
 function normalizeUnit(value) {
@@ -500,7 +546,7 @@ async function scrapeFlyertownDeals(config) {
   const seenIds = new Map();
   for (const item of flyerData?.items ?? []) {
     const title = item.display_name || item.name || item.description;
-    const price = parseFlyertownPrice(item);
+    const { price, wasPrice } = parseFlyertownPricing(item);
     if (!title || price === null) {
       continue;
     }
@@ -513,6 +559,7 @@ async function scrapeFlyertownDeals(config) {
       title: String(title).trim(),
       store: config.store,
       price,
+      wasPrice: wasPrice ?? undefined,
       unit: normalizeUnit(item.price_text || item.pre_price_text),
       category: normalizeCategory(item.category_names?.[0], title),
       imageUrl: item.large_image_url || item.x_large_image_url || undefined,

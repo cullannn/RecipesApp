@@ -199,7 +199,7 @@ async function resolveUnsplashImage(query) {
 async function callOpenAiChat({
   prompt,
   model,
-  temperature = 0.7,
+  temperature = 1,
   responseFormat = 'json_object',
   systemContent = 'You are a helpful culinary assistant that returns only valid JSON.',
 }) {

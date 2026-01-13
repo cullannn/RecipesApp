@@ -210,6 +210,11 @@ function pickBestStore(deals: DealItem[], recipes: Recipe[], options: {
   const favoriteOrder = new Map(
     (options.favoriteStores ?? []).map((store, index) => [normalizeName(store), index])
   );
+  const storeMatchInfo: Array<{
+    store: string;
+    matchedDealsCount: number;
+    totalDeals: number;
+  }> = [];
   for (const [store, storeDeals] of dealsByStore.entries()) {
     const selection = selectRecipesForDeals({
       mealsRequested: options.mealsRequested,
@@ -219,6 +224,11 @@ function pickBestStore(deals: DealItem[], recipes: Recipe[], options: {
       dietaryPrefs: options.dietaryPrefs,
       cuisineThemes: options.cuisineThemes,
       aiPrompt: options.aiPrompt,
+    });
+    storeMatchInfo.push({
+      store,
+      matchedDealsCount: selection.matchedDealsCount,
+      totalDeals: storeDeals.length,
     });
     const storeRank = favoriteOrder.get(normalizeName(store));
     const bestRank = bestStore ? favoriteOrder.get(normalizeName(bestStore)) : undefined;
@@ -236,6 +246,14 @@ function pickBestStore(deals: DealItem[], recipes: Recipe[], options: {
       bestSelection = selection;
       bestStore = store;
     }
+  }
+
+  if (__DEV__ && storeMatchInfo.length > 0) {
+    console.info('[meal-plan] store match info', storeMatchInfo);
+    console.info('[meal-plan] selected store', {
+      store: bestStore,
+      matchedDeals: bestSelection?.matchedDealsCount ?? 0,
+    });
   }
 
   return {

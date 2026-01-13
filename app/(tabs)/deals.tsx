@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, Easing, FlatList, Pressable, ScrollView, StyleSheet, Text, View, Image as RNImage } from 'react-native';
+import { Animated, Easing, FlatList, Modal, Pressable, ScrollView, StyleSheet, Text, View, Image as RNImage } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { Card, TextInput, Button } from 'react-native-paper';
@@ -219,6 +219,7 @@ export default function DealsScreen() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchModalVisible, setSearchModalVisible] = useState(false);
   const chevronAnims = useRef(new Map<string, Animated.Value>());
   const dealsQuery = useDeals({
     postalCode,
@@ -368,26 +369,42 @@ export default function DealsScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
-      <View style={styles.filterBar}>
-        <View style={styles.header}>
-          <GradientTitle text={cityLabel ? `Deals in ${cityLabel}` : 'Deals'} style={styles.title} />
+      <Modal animationType="fade" transparent visible={searchModalVisible} onRequestClose={() => setSearchModalVisible(false)}>
+        <View style={styles.searchModalBackdrop}>
+          <View style={styles.searchModalContent}>
+            <Text style={styles.searchModalTitle}>Search deals</Text>
+            <TextInput
+              mode="outlined"
+              placeholder="Steak, Ribs, Salmon, Eggs..."
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              style={styles.searchInput}
+              textColor="#2A2F34"
+              placeholderTextColor="#9AA0A6"
+              left={<TextInput.Icon icon="magnify" color="#7A8086" />}
+              right={
+                searchQuery ? (
+                  <TextInput.Icon icon="close-circle" color="#7A8086" onPress={() => setSearchQuery('')} />
+                ) : null
+              }
+            />
+            <Button
+              mode="contained"
+              buttonColor="#1B7F3A"
+              textColor="#FFFFFF"
+              style={styles.searchModalButton}
+              onPress={() => setSearchModalVisible(false)}>
+              Done
+            </Button>
+          </View>
         </View>
-        <View style={styles.searchRow}>
-          <TextInput
-            mode="outlined"
-            placeholder="Search deals"
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            style={styles.searchInput}
-            textColor="#2A2F34"
-            placeholderTextColor="#9AA0A6"
-            left={<TextInput.Icon icon="magnify" color="#7A8086" />}
-            right={
-              searchQuery ? (
-                <TextInput.Icon icon="close-circle" color="#7A8086" onPress={() => setSearchQuery('')} />
-              ) : null
-            }
-          />
+      </Modal>
+      <View style={styles.filterBar}>
+        <View style={styles.headerRow}>
+          <GradientTitle text={cityLabel ? `Deals in ${cityLabel}` : 'Deals'} style={styles.title} />
+          <Pressable style={styles.searchButton} onPress={() => setSearchModalVisible(true)}>
+            <MaterialCommunityIcons name="magnify" size={20} color="#FFFFFF" />
+          </Pressable>
         </View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsRow}>
           <FilterItem label="All Stores" selected={!selectedStore} onPress={() => setSelectedStore(null)} />
@@ -510,7 +527,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     paddingTop: 0,
   },
-  header: {
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     paddingHorizontal: 16,
     marginBottom: 8,
   },
@@ -520,13 +540,34 @@ const styles = StyleSheet.create({
     paddingBottom: 6,
     marginBottom: 8,
   },
-  searchRow: {
-    paddingHorizontal: 16,
-    marginBottom: 10,
-  },
   searchInput: {
     height: 44,
     backgroundColor: '#FFFFFF',
+  },
+  searchButton: {
+    backgroundColor: '#1B7F3A',
+    padding: 8,
+    borderRadius: 999,
+  },
+  searchModalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  searchModalContent: {
+    width: '90%',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 20,
+  },
+  searchModalTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1F1F1F',
+  },
+  searchModalButton: {
+    marginTop: 8,
   },
   emptyState: {
     alignItems: 'center',

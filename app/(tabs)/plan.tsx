@@ -379,13 +379,26 @@ export default function PlanScreen() {
     if (!plan) {
       return [];
     }
-    const scopedDeals = plan.selectedStore
-      ? (dealsQuery.data ?? []).filter((deal) => deal.store === plan.selectedStore)
-      : dealsQuery.data ?? [];
+    const allDeals = dealsQuery.data ?? [];
     const ingredientNames = plan.recipes.flatMap((recipe) =>
       recipe.ingredients.map((ingredient) => ingredient.name)
     );
-    const matchedDeals = scopedDeals.filter((deal) =>
+    const matches = allDeals.filter((deal) =>
+      ingredientNames.some((name) => matchDealToIngredient(deal, name))
+    );
+    const storeCounts = matches.reduce<Map<string, number>>((acc, deal) => {
+      acc.set(deal.store, (acc.get(deal.store) ?? 0) + 1);
+      return acc;
+    }, new Map());
+    let fallbackStore = plan.selectedStore;
+    if (!fallbackStore) {
+      const bestStore = Array.from(storeCounts.entries()).sort((a, b) => b[1] - a[1])[0];
+      fallbackStore = bestStore && bestStore[1] > 0 ? bestStore[0] : undefined;
+    }
+    const scopedDeals = fallbackStore
+      ? allDeals.filter((deal) => deal.store === fallbackStore)
+      : allDeals;
+    const scopedMatches = scopedDeals.filter((deal) =>
       ingredientNames.some((name) => matchDealToIngredient(deal, name))
     );
     const pantryStaples = [
@@ -417,7 +430,7 @@ export default function PlanScreen() {
       'mayo',
       'mayonnaise',
     ];
-    const filteredDeals = matchedDeals.filter((deal) => {
+    const filteredDeals = scopedMatches.filter((deal) => {
       const category = deal.category?.toLowerCase() ?? '';
       const title = deal.title.toLowerCase();
       if (pantryStaples.some((staple) => title.includes(staple))) {
