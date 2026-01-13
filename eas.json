@@ -1,0 +1,12 @@
+{
+      "cli": { "version": ">= 3.20.0" },
+      "build": {
+        "production": {
+          "env": {
+            "EXPO_PUBLIC_DEALS_SERVER_URL": "@EXPO_PUBLIC_DEALS_SERVER_URL",
+            "EXPO_PUBLIC_AI_BASE_URL": "@EXPO_PUBLIC_AI_BASE_URL"
+          }
+        }
+      },
+      "submit": { "production": {} }
+    }
