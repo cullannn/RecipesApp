@@ -58,7 +58,7 @@ function DealCard({
     id: string;
     title: string;
     store: string;
-    price: number;
+      price: number | null;
     wasPrice?: number;
     unit: string;
     validFrom?: string;
@@ -80,11 +80,17 @@ function DealCard({
     }
     return candidate;
   };
+  const priceAvailable = typeof item.price === 'number' && Number.isFinite(item.price);
   const resolvedWasPrice =
-    typeof item.wasPrice === 'number' ? item.wasPrice : buildWasPrice(item.price);
-  const hasSavings = typeof resolvedWasPrice === 'number' && resolvedWasPrice > item.price;
+    typeof item.wasPrice === 'number'
+      ? item.wasPrice
+      : priceAvailable
+      ? buildWasPrice(item.price ?? 0)
+      : undefined;
+  const hasSavings =
+    priceAvailable && typeof resolvedWasPrice === 'number' && resolvedWasPrice > (item.price ?? 0);
   const savingsPercent = hasSavings
-    ? Math.round(((resolvedWasPrice - item.price) / resolvedWasPrice) * 100)
+    ? Math.round(((resolvedWasPrice! - (item.price ?? 0)) / resolvedWasPrice!) * 100)
     : null;
   return (
     <Card style={styles.card}>
@@ -99,13 +105,19 @@ function DealCard({
         <View style={styles.cardText}>
           <Text style={styles.cardTitle}>{item.title}</Text>
           <Text style={styles.cardMeta}>
-            {hasSavings ? (
-              <>
-                <Text style={styles.priceWas}>Was CAD {resolvedWasPrice?.toFixed(2)}</Text>
-                {'  '}Now CAD {item.price.toFixed(2)} / {item.unit}
-              </>
+            {priceAvailable ? (
+              hasSavings ? (
+                <>
+                  <Text style={styles.priceWas}>Was CAD {resolvedWasPrice?.toFixed(2)}</Text>
+                  {'  '}Now CAD {(item.price ?? 0).toFixed(2)} / {item.unit}
+                </>
+              ) : (
+                <>CAD {(item.price ?? 0).toFixed(2)} / {item.unit}</>
+              )
             ) : (
-              <>CAD {item.price.toFixed(2)} / {item.unit}</>
+              <>
+                <Text style={styles.priceWas}>Price Coming Soon...</Text>
+              </>
             )}
           </Text>
           {savingsPercent !== null ? (
@@ -762,7 +774,6 @@ const styles = StyleSheet.create({
   },
   priceWas: {
     color: '#9AA0A6',
-    textDecorationLine: 'line-through',
   },
   cardSavings: {
     fontSize: 12,

@@ -955,10 +955,32 @@ async function scrapeFlyertownDeals(config) {
       );
     }
     for (const item of items ?? []) {
-      const title = item.display_name || item.name || item.description;
-      const { price, wasPrice } = parseFlyertownPricing(item);
-      if (!title || price === null) {
+      const rawTitle = item.display_name || item.name || item.description;
+      if (!rawTitle) {
         runSkippedMissingPrice += 1;
+        continue;
+      }
+      const title = String(rawTitle).trim();
+      const { price, wasPrice } = parseFlyertownPricing(item);
+      if (price === null) {
+        runSkippedMissingPrice += 1;
+        const placeholderBaseId = `${config.store.toLowerCase().replace(/\s+/g, '-')}-${flyerRunId}-missing-price-${slugify(title)}`;
+        const placeholderCount = (seenIds.get(placeholderBaseId) ?? 0) + 1;
+        seenIds.set(placeholderBaseId, placeholderCount);
+        const placeholderId = placeholderCount === 1 ? placeholderBaseId : `${placeholderBaseId}-${placeholderCount}`;
+        deals.push({
+          id: placeholderId,
+          title: title,
+          store: config.store,
+          price: null,
+          wasPrice: undefined,
+          unit: normalizeUnit(item.price_text || item.pre_price_text) || 'each',
+          category: normalizeCategory(item.category_names?.[0], title),
+          imageUrl: item.large_image_url || item.x_large_image_url || undefined,
+          validFrom: item.valid_from || flyerData?.valid_from || undefined,
+          validTo: item.valid_to || flyerData?.valid_to || undefined,
+          missingPrice: true,
+        });
         continue;
       }
       if (!isGroceryItem(title, item)) {
