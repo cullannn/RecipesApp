@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
@@ -49,7 +49,7 @@ const cuisineKeywords = [
 const fallbackImage =
   'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=800&q=80';
 
-function RecipeCard({
+const RecipeCard = memo(function RecipeCard({
   recipe,
   index,
   servingsTarget,
@@ -66,10 +66,20 @@ function RecipeCard({
   };
   index: number;
   servingsTarget?: number;
-  onPress?: () => void;
-  onRemove?: () => void;
+  onPress?: (id: string) => void;
+  onRemove?: (id: string) => void;
 }) {
   const imageUrl = useRemoteImage(recipe.title, recipe.imageUrl ?? null);
+  const handlePress = useCallback(() => {
+    if (onPress) {
+      onPress(recipe.id);
+    }
+  }, [onPress, recipe.id]);
+  const handleRemove = useCallback(() => {
+    if (onRemove) {
+      onRemove(recipe.id);
+    }
+  }, [onRemove, recipe.id]);
   const imageSource = imageUrl
     ? imageUrl.includes('/api/image-file/')
       ? 'openai'
@@ -80,7 +90,7 @@ function RecipeCard({
   const imageId = imageUrl ? imageUrl.split('?')[0].split('/').pop() ?? '' : '';
   const imageDebug = imageId ? `${imageSource} (${imageId})` : imageSource;
   return (
-    <Card style={styles.planCard} onPress={onPress}>
+    <Card style={styles.planCard} onPress={handlePress}>
       <View style={styles.planCardClip}>
         <View style={styles.coverWrap}>
           <Image
@@ -94,7 +104,7 @@ function RecipeCard({
             <IconButton
               icon="close"
               size={18}
-              onPress={onRemove}
+              onPress={handleRemove}
               style={styles.removeButton}
               accessibilityLabel="Remove recipe from plan"
             />
@@ -124,7 +134,7 @@ function RecipeCard({
       </View>
     </Card>
   );
-}
+});
 
 function formatScaledQuantity(
   quantity: number | string,
@@ -175,6 +185,22 @@ export default function PlanScreen() {
     previousPlan?: MealPlan;
   } | null>(null);
   const [undoVisible, setUndoVisible] = useState(false);
+  const handlePressRecipe = useCallback((id: string) => {
+    router.push(`/recipe/${id}`);
+  }, []);
+  const handleRemoveRecipe = useCallback(
+    (id: string) => {
+      if (!plan) {
+        return;
+      }
+      const previousPlan = plan;
+      const remaining = plan.recipes.filter((item) => item.id !== id);
+      setPlan({ ...plan, recipes: remaining, mealsRequested: remaining.length });
+      setUndoState({ previousPlan });
+      setUndoVisible(true);
+    },
+    [plan, setPlan]
+  );
 
   useEffect(() => {
     if (servings === undefined && householdSize) {
@@ -675,17 +701,8 @@ export default function PlanScreen() {
                 recipe={recipe}
                 index={index}
                 servingsTarget={effectiveServings}
-                onPress={() => router.push(`/recipe/${recipe.id}`)}
-                onRemove={() => {
-                  if (!plan) {
-                    return;
-                  }
-                  const previousPlan = plan;
-                  const remaining = plan.recipes.filter((item) => item.id !== recipe.id);
-                  setPlan({ ...plan, recipes: remaining, mealsRequested: remaining.length });
-                  setUndoState({ previousPlan });
-                  setUndoVisible(true);
-                }}
+                onPress={handlePressRecipe}
+                onRemove={handleRemoveRecipe}
               />
             ))
           ) : (

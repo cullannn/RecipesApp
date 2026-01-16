@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { memo, useCallback, useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
@@ -55,20 +55,21 @@ export default function RecipesScreen() {
     }));
   }, [recipeHistory]);
 
-  const renderRecipeItem = (
-    item: { id: string; title: string; imageUrl?: string | null; cookTimeMins: number; servings: number },
-    dateKey: string
-  ) => (
-    <RecipeListItem
-      item={item}
-      dateKey={dateKey}
-      onRemove={(recipeId, removeDateKey, recipe) => {
-        removeHistoryRecipe(recipeId, removeDateKey);
-        setUndoState({ recipe, dateKey: removeDateKey });
-        setUndoVisible(true);
-      }}
-    />
+  const handleRemove = useCallback(
+    (
+      recipeId: string,
+      removeDateKey: string,
+      recipe: { id: string; title: string; imageUrl?: string | null; cookTimeMins: number; servings: number }
+    ) => {
+      removeHistoryRecipe(recipeId, removeDateKey);
+      setUndoState({ recipe, dateKey: removeDateKey });
+      setUndoVisible(true);
+    },
+    [removeHistoryRecipe]
   );
+  const handlePress = useCallback((id: string) => {
+    router.push(`/recipe/${id}`);
+  }, []);
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
@@ -88,7 +89,14 @@ export default function RecipesScreen() {
                 </View>
                 <View style={styles.sectionBody}>
                   {section.data.map((item) => (
-                    <View key={item.id}>{renderRecipeItem(item, section.dateKey)}</View>
+                    <View key={item.id}>
+                      <RecipeListItem
+                        item={item}
+                        dateKey={section.dateKey}
+                        onRemove={handleRemove}
+                        onPress={handlePress}
+                      />
+                    </View>
                   ))}
                 </View>
               </View>
@@ -117,18 +125,20 @@ export default function RecipesScreen() {
   );
 }
 
-function RecipeListItem({
+const RecipeListItem = memo(function RecipeListItem({
   item,
   dateKey,
   onRemove,
+  onPress,
 }: {
   item: { id: string; title: string; imageUrl?: string | null; cookTimeMins: number; servings: number };
   dateKey: string;
   onRemove: (recipeId: string, dateKey: string, recipe: { id: string; title: string; imageUrl?: string | null; cookTimeMins: number; servings: number }) => void;
+  onPress: (recipeId: string) => void;
 }) {
   const imageUrl = useRemoteImage(item.title, item.imageUrl ?? null, { kind: 'recipe' });
   return (
-    <Card style={styles.card} onPress={() => router.push(`/recipe/${item.id}`)}>
+    <Card style={styles.card} onPress={() => onPress(item.id)}>
       <View style={styles.cardClip}>
         <View style={styles.coverWrap}>
           <Image
@@ -167,7 +177,7 @@ function RecipeListItem({
       </View>
     </Card>
   );
-}
+});
 
 const styles = StyleSheet.create({
   container: {

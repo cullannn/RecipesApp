@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, Easing, FlatList, Modal, Pressable, ScrollView, StyleSheet, Text, View, Image as RNImage } from 'react-native';
+import { memo, useCallback, useEffect, useMemo, useRef, useState, useTransition } from 'react';
+import { Animated, Easing, Modal, Pressable, ScrollView, SectionList, StyleSheet, Text, View, Image as RNImage } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { Card, TextInput, Button } from 'react-native-paper';
@@ -17,7 +17,7 @@ const fallbackImage =
   'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=800&q=80';
 const loadingFallbackIcon = 'basket-outline';
 
-function FilterItem({
+const FilterItem = memo(function FilterItem({
   label,
   selected,
   onPress,
@@ -49,9 +49,9 @@ function FilterItem({
       <Text style={[styles.filterText, selected && styles.filterTextSelected]}>{label}</Text>
     </Pressable>
   );
-}
+});
 
-function DealCard({
+const DealCard = memo(function DealCard({
   item,
   onPress,
 }: {
@@ -131,7 +131,7 @@ function DealCard({
       </View>
     </Card>
   );
-}
+});
 
 function DealImageModal({
   deal,
@@ -264,6 +264,7 @@ export default function DealsScreen() {
   const { postalCode, favoriteStores } = usePreferencesStore();
   const [selectedStore, setSelectedStore] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [, startTransition] = useTransition();
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState('');
   const [searchModalVisible, setSearchModalVisible] = useState(false);
@@ -347,6 +348,15 @@ export default function DealsScreen() {
     });
   }, [deals, favoriteStores, searchQuery]);
 
+  const sections = useMemo(
+    () =>
+      groupedDeals.map((group) => ({
+        ...group,
+        data: collapsedGroups.has(group.key) ? [] : group.deals,
+      })),
+    [groupedDeals, collapsedGroups]
+  );
+
   useEffect(() => {
     groupedDeals.forEach((group) => {
       if (!chevronAnims.current.has(group.key)) {
@@ -358,7 +368,7 @@ export default function DealsScreen() {
     });
   }, [groupedDeals, collapsedGroups]);
 
-  const toggleGroup = (key: string) => {
+  const toggleGroup = useCallback((key: string) => {
     setCollapsedGroups((prev) => {
       const next = new Set(prev);
       const isCollapsed = next.has(key);
@@ -379,7 +389,7 @@ export default function DealsScreen() {
       }
       return next;
     });
-  };
+  }, []);
 
 
   const categories = useMemo(() => {
@@ -414,6 +424,75 @@ export default function DealsScreen() {
       </View>
     );
   }
+
+  const renderSectionHeader = useCallback(
+    ({
+      section,
+    }: {
+      section: { key: string; store: string; range: string; data: typeof deals };
+    }) => {
+      const isCollapsed = collapsedGroups.has(section.key);
+      const chevronProgress =
+        chevronAnims.current.get(section.key) ?? new Animated.Value(isCollapsed ? 0 : 1);
+      const rotate = chevronProgress.interpolate({
+        inputRange: [0, 1],
+        outputRange: ['-90deg', '0deg'],
+      });
+      const scale = chevronProgress.interpolate({
+        inputRange: [0, 1],
+        outputRange: [0.92, 1],
+      });
+      return (
+        <View style={[styles.groupHeaderCard, isCollapsed && styles.groupHeaderCollapsed]}>
+          <Pressable onPress={() => toggleGroup(section.key)} style={styles.groupHeader}>
+            <View style={styles.groupHeaderRow}>
+              {resolveStoreLogo(section.store) ? (
+                <RNImage
+                  source={resolveStoreLogo(section.store)}
+                  style={styles.groupHeaderLogo}
+                  resizeMode="contain"
+                />
+              ) : null}
+              <Text style={styles.groupTitle}>
+                {section.store} {section.range}
+              </Text>
+              <View style={styles.groupHeaderSpacer} />
+              <Animated.View style={[styles.groupToggle, { transform: [{ scale }] }]}>
+                <Animated.View style={{ transform: [{ rotate }] }}>
+                  <MaterialCommunityIcons name="chevron-down-circle" size={20} color="#1B7F3A" />
+                </Animated.View>
+              </Animated.View>
+            </View>
+          </Pressable>
+        </View>
+      );
+    },
+    [collapsedGroups, toggleGroup]
+  );
+
+  const renderDealItem = useCallback(
+    ({
+      item,
+      index,
+      section,
+    }: {
+      item: (typeof deals)[number];
+      index: number;
+      section: { data: typeof deals };
+    }) => {
+      const isLast = index === section.data.length - 1;
+      const isFirst = index === 0;
+      return (
+        <View style={[styles.groupItemRow, isFirst && styles.groupItemRowFirst, isLast && styles.groupItemRowLast]}>
+          <DealCard
+            item={item}
+            onPress={() => setSelectedDeal({ title: item.title, imageUrl: item.imageUrl })}
+          />
+        </View>
+      );
+    },
+    []
+  );
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
@@ -456,13 +535,17 @@ export default function DealsScreen() {
           </Pressable>
         </View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsRow}>
-          <FilterItem label="All Stores" selected={!selectedStore} onPress={() => setSelectedStore(null)} />
+          <FilterItem
+            label="All Stores"
+            selected={!selectedStore}
+            onPress={() => startTransition(() => setSelectedStore(null))}
+          />
           {stores.map((store) => (
             <FilterItem
               key={store}
               label={store}
               selected={selectedStore === store}
-              onPress={() => setSelectedStore(store)}
+              onPress={() => startTransition(() => setSelectedStore(store))}
               imageSource={resolveStoreLogo(store)}
             />
           ))}
@@ -471,7 +554,7 @@ export default function DealsScreen() {
           <FilterItem
             label="All"
             selected={!selectedCategory}
-            onPress={() => setSelectedCategory(null)}
+            onPress={() => startTransition(() => setSelectedCategory(null))}
             iconName="apps"
           />
           {categories.map((category) => {
@@ -483,7 +566,7 @@ export default function DealsScreen() {
                 key={category}
                 label={label}
                 selected={selectedCategory === category}
-                onPress={() => setSelectedCategory(category)}
+                onPress={() => startTransition(() => setSelectedCategory(category))}
                 iconName={iconName}
               />
             );
@@ -493,11 +576,13 @@ export default function DealsScreen() {
 
       <View style={styles.listWrapper}>
         <PatternBackground />
-        <FlatList
-          data={groupedDeals}
-          keyExtractor={(item) => item.key}
+        <SectionList
+          sections={sections}
+          keyExtractor={(item) => item.id}
           contentContainerStyle={styles.list}
           style={styles.listSurface}
+          renderSectionHeader={renderSectionHeader}
+          renderItem={renderDealItem}
           ListEmptyComponent={
             dealsQuery.isLoading ? (
               <LoadingDealsSplash />
@@ -516,55 +601,12 @@ export default function DealsScreen() {
               </View>
             )
           }
-          renderItem={({ item }) => {
-            const isCollapsed = collapsedGroups.has(item.key);
-            const chevronProgress = chevronAnims.current.get(item.key) ?? new Animated.Value(isCollapsed ? 0 : 1);
-            const rotate = chevronProgress.interpolate({
-              inputRange: [0, 1],
-              outputRange: ['-90deg', '0deg'],
-            });
-            const scale = chevronProgress.interpolate({
-              inputRange: [0, 1],
-              outputRange: [0.92, 1],
-            });
-            return (
-            <View style={styles.groupCard}>
-              <Pressable onPress={() => toggleGroup(item.key)} style={styles.groupHeader}>
-                <View style={styles.groupHeaderRow}>
-                  {resolveStoreLogo(item.store) ? (
-                    <RNImage
-                      source={resolveStoreLogo(item.store)}
-                      style={styles.groupHeaderLogo}
-                      resizeMode="contain"
-                    />
-                  ) : null}
-                  <Text style={styles.groupTitle}>
-                    {item.store} {item.range}
-                  </Text>
-                  <View style={styles.groupHeaderSpacer} />
-                  <Animated.View style={[styles.groupToggle, { transform: [{ scale }] }]}>
-                    <Animated.View style={{ transform: [{ rotate }] }}>
-                      <MaterialCommunityIcons name="chevron-down-circle" size={20} color="#1B7F3A" />
-                    </Animated.View>
-                  </Animated.View>
-                </View>
-              </Pressable>
-              {!isCollapsed && (
-                <View style={styles.groupBody}>
-                  {item.deals.map((deal) => {
-                    return (
-                      <DealCard
-                        key={deal.id}
-                        item={deal}
-                        onPress={() => setSelectedDeal({ title: deal.title, imageUrl: deal.imageUrl })}
-                      />
-                    );
-                  })}
-                </View>
-              )}
-            </View>
-          );
-        }}
+          initialNumToRender={6}
+          maxToRenderPerBatch={6}
+          windowSize={9}
+          updateCellsBatchingPeriod={50}
+          removeClippedSubviews
+          stickySectionHeadersEnabled={false}
         />
       </View>
     </SafeAreaView>
@@ -774,18 +816,25 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     paddingBottom: 0,
   },
-  groupCard: {
+  groupHeaderCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 18,
+    borderTopLeftRadius: 18,
+    borderTopRightRadius: 18,
     borderWidth: 1,
     borderColor: '#E6E9EF',
-    marginBottom: 16,
     overflow: 'hidden',
+    borderBottomWidth: 0,
     shadowColor: '#0f172a',
-    shadowOpacity: 0.08,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 4,
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 3,
+  },
+  groupHeaderCollapsed: {
+    borderBottomLeftRadius: 18,
+    borderBottomRightRadius: 18,
+    borderBottomWidth: 1,
+    marginBottom: 16,
   },
   groupHeader: {
     backgroundColor: '#D8EFDF',
@@ -829,6 +878,30 @@ const styles = StyleSheet.create({
   },
   groupBody: {
     padding: 12,
+  },
+  groupItemRow: {
+    backgroundColor: '#FFFFFF',
+    borderLeftWidth: 1,
+    borderRightWidth: 1,
+    borderColor: '#E6E9EF',
+    paddingHorizontal: 12,
+    paddingBottom: 2,
+  },
+  groupItemRowFirst: {
+    paddingTop: 10,
+  },
+  groupItemRowLast: {
+    borderBottomLeftRadius: 18,
+    borderBottomRightRadius: 18,
+    borderBottomWidth: 1,
+    borderColor: '#E6E9EF',
+    paddingBottom: 8,
+    marginBottom: 12,
+    shadowColor: '#0f172a',
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 3,
   },
   listWrapper: {
     flex: 1,
