@@ -1,12 +1,49 @@
 {
-      "cli": { "version": ">= 3.20.0" },
-      "build": {
-        "production": {
-          "env": {
-            "EXPO_PUBLIC_DEALS_SERVER_URL": "@EXPO_PUBLIC_DEALS_SERVER_URL",
-            "EXPO_PUBLIC_AI_BASE_URL": "@EXPO_PUBLIC_AI_BASE_URL"
-          }
-        }
-      },
-      "submit": { "production": {} }
+  "cli": { "version": ">= 3.20.0" },
+  "build": {
+    "production": {
+      "env": {
+        "EXPO_PUBLIC_DEALS_SERVER_URL": "@EXPO_PUBLIC_DEALS_SERVER_URL",
+        "EXPO_PUBLIC_AI_BASE_URL": "@EXPO_PUBLIC_AI_BASE_URL"
+      }
+    },
+    "adhoc": {
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_DEALS_SERVER_URL": "@EXPO_PUBLIC_DEALS_SERVER_URL",
+        "EXPO_PUBLIC_AI_BASE_URL": "@EXPO_PUBLIC_AI_BASE_URL",
+        "OCR_SPACE_API_KEY": "@OCR_SPACE_API_KEY",
+        "EXPO_PUBLIC_OPENAI_API_KEY": "@EXPO_PUBLIC_OPENAI_API_KEY",
+        "OPENAI_API_KEY": "@OPENAI_API_KEY",
+        "UNSPLASH_ACCESS_KEY": "@UNSPLASH_ACCESS_KEY",
+        "EXPO_PUBLIC_USE_DEALS_PROVIDER": "local-scrape",
+        "EXPO_PUBLIC_OPENAI_MODEL": "gpt-5-mini",
+        "OPENAI_RECIPE_MODEL": "gpt-5-mini",
+        "OPENAI_TITLE_MODEL": "gpt-5-nano",
+        "OPENAI_NUTRITION_MODEL": "gpt-5-nano",
+        "OPENAI_IMAGE_PROMPT_MODEL": "gpt-5-nano",
+        "OPENAI_IMAGE_MODEL": "gpt-image-1"
+      }
+    },
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_DEALS_SERVER_URL": "@EXPO_PUBLIC_DEALS_SERVER_URL",
+        "EXPO_PUBLIC_AI_BASE_URL": "@EXPO_PUBLIC_AI_BASE_URL",
+        "OCR_SPACE_API_KEY": "@OCR_SPACE_API_KEY",
+        "EXPO_PUBLIC_OPENAI_API_KEY": "@EXPO_PUBLIC_OPENAI_API_KEY",
+        "OPENAI_API_KEY": "@OPENAI_API_KEY",
+        "UNSPLASH_ACCESS_KEY": "@UNSPLASH_ACCESS_KEY",
+        "EXPO_PUBLIC_USE_DEALS_PROVIDER": "local-scrape",
+        "EXPO_PUBLIC_OPENAI_MODEL": "gpt-5-mini",
+        "OPENAI_RECIPE_MODEL": "gpt-5-mini",
+        "OPENAI_TITLE_MODEL": "gpt-5-nano",
+        "OPENAI_NUTRITION_MODEL": "gpt-5-nano",
+        "OPENAI_IMAGE_PROMPT_MODEL": "gpt-5-nano",
+        "OPENAI_IMAGE_MODEL": "gpt-image-1"
+      }
     }
+  },
+  "submit": { "production": {} }
+}

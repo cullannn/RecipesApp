@@ -94,35 +94,37 @@ function DealCard({
     : null;
   return (
     <Card style={styles.card}>
-      <View style={styles.cardRow}>
-        <Image
-          key={imageUrl ?? fallbackImage}
-          source={{ uri: imageUrl ?? fallbackImage }}
-          style={styles.thumb}
-          contentFit="cover"
-          cachePolicy="none"
-        />
-        <View style={styles.cardText}>
-          <Text style={styles.cardTitle}>{item.title}</Text>
-          <Text style={styles.cardMeta}>
-            {priceAvailable ? (
-              hasSavings ? (
-                <>
-                  <Text style={styles.priceWas}>Was CAD {resolvedWasPrice?.toFixed(2)}</Text>
-                  {'  '}Now CAD {(item.price ?? 0).toFixed(2)} / {item.unit}
-                </>
+      <View style={styles.cardClip}>
+        <View style={styles.cardRow}>
+          <Image
+            key={imageUrl ?? fallbackImage}
+            source={{ uri: imageUrl ?? fallbackImage }}
+            style={styles.thumb}
+            contentFit="cover"
+            cachePolicy="none"
+          />
+          <View style={styles.cardText}>
+            <Text style={styles.cardTitle}>{item.title}</Text>
+            <Text style={styles.cardMeta}>
+              {priceAvailable ? (
+                hasSavings ? (
+                  <>
+                    <Text style={styles.priceWas}>Was CAD {resolvedWasPrice?.toFixed(2)}</Text>
+                    {'  '}Now CAD {(item.price ?? 0).toFixed(2)} / {item.unit}
+                  </>
+                ) : (
+                  <>CAD {(item.price ?? 0).toFixed(2)} / {item.unit}</>
+                )
               ) : (
-                <>CAD {(item.price ?? 0).toFixed(2)} / {item.unit}</>
-              )
-            ) : (
-              <>
-                <Text style={styles.priceWas}>Price Coming Soon...</Text>
-              </>
-            )}
-          </Text>
-          {savingsPercent !== null ? (
-            <Text style={styles.cardSavings}>Save {savingsPercent}%</Text>
-          ) : null}
+                <>
+                  <Text style={styles.priceWas}>Price Coming Soon...</Text>
+                </>
+              )}
+            </Text>
+            {savingsPercent !== null ? (
+              <Text style={styles.cardSavings}>Save {savingsPercent}%</Text>
+            ) : null}
+          </View>
         </View>
       </View>
     </Card>
@@ -759,7 +761,6 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
-    overflow: 'hidden',
     borderWidth: 1,
     borderColor: '#E6E9EF',
     shadowColor: '#0f172a',
@@ -767,6 +768,10 @@ const styles = StyleSheet.create({
     shadowRadius: 18,
     shadowOffset: { width: 0, height: 10 },
     elevation: 6,
+  },
+  cardClip: {
+    borderRadius: 16,
+    overflow: 'hidden',
   },
   cardMeta: {
     fontSize: 12,

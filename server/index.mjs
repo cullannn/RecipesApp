@@ -11,6 +11,7 @@ const OPENAI_TITLE_MODEL = process.env.OPENAI_TITLE_MODEL ?? 'gpt-5-nano';
 const OPENAI_NUTRITION_MODEL = process.env.OPENAI_NUTRITION_MODEL ?? 'gpt-5-nano';
 const OPENAI_IMAGE_PROMPT_MODEL = process.env.OPENAI_IMAGE_PROMPT_MODEL ?? 'gpt-5-nano';
 const OPENAI_IMAGE_MODEL = process.env.OPENAI_IMAGE_MODEL ?? 'gpt-image-1';
+const OPENAI_IMAGE_SIZE = process.env.OPENAI_IMAGE_SIZE ?? '512x512';
 const PORT = Number.parseInt(process.env.PORT ?? '8787', 10);
 const CACHE_DIR = path.join(process.cwd(), 'server', 'cache');
 const IMAGE_CACHE_PATH = path.join(CACHE_DIR, 'images.json');
@@ -298,7 +299,7 @@ async function callOpenAiImage(prompt, timeoutMs = OPENAI_IMAGE_TIMEOUT_MS) {
       body: JSON.stringify({
         model: OPENAI_IMAGE_MODEL,
         prompt,
-        size: '1024x1024',
+        size: OPENAI_IMAGE_SIZE,
       }),
     });
   } catch (error) {

@@ -129,28 +129,30 @@ function RecipeListItem({
   const imageUrl = useRemoteImage(item.title, item.imageUrl ?? null, { kind: 'recipe' });
   return (
     <Card style={styles.card} onPress={() => router.push(`/recipe/${item.id}`)}>
-      <Image
-        key={imageUrl ?? fallbackImage}
-        source={{ uri: imageUrl ?? fallbackImage }}
-        style={styles.cover}
-        contentFit="cover"
-        cachePolicy="none"
-      />
-      <Card.Content style={styles.cardContent}>
-        <View style={styles.cardTitleRow}>
-          <Text style={styles.cardTitle}>{item.title}</Text>
-          <IconButton
-            icon="close"
-            size={16}
-            onPress={() => onRemove(item.id, dateKey, item)}
-            style={styles.removeButton}
-            accessibilityLabel="Remove recipe from history"
-          />
-        </View>
-        <Text style={styles.cardMeta}>
-          {item.cookTimeMins} mins • Serves {item.servings}
-        </Text>
-      </Card.Content>
+      <View style={styles.cardClip}>
+        <Image
+          key={imageUrl ?? fallbackImage}
+          source={{ uri: imageUrl ?? fallbackImage }}
+          style={styles.cover}
+          contentFit="cover"
+          cachePolicy="none"
+        />
+        <Card.Content style={styles.cardContent}>
+          <View style={styles.cardTitleRow}>
+            <Text style={styles.cardTitle}>{item.title}</Text>
+            <IconButton
+              icon="close"
+              size={16}
+              onPress={() => onRemove(item.id, dateKey, item)}
+              style={styles.removeButton}
+              accessibilityLabel="Remove recipe from history"
+            />
+          </View>
+          <Text style={styles.cardMeta}>
+            {item.cookTimeMins} mins • Serves {item.servings}
+          </Text>
+        </Card.Content>
+      </View>
     </Card>
   );
 }
@@ -214,7 +216,6 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
-    overflow: 'hidden',
     borderWidth: 1,
     borderColor: '#E6E9EF',
     shadowColor: '#0f172a',
@@ -222,6 +223,10 @@ const styles = StyleSheet.create({
     shadowRadius: 18,
     shadowOffset: { width: 0, height: 10 },
     elevation: 6,
+  },
+  cardClip: {
+    borderRadius: 16,
+    overflow: 'hidden',
   },
   cover: {
     width: '100%',

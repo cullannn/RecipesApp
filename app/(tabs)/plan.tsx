@@ -81,45 +81,47 @@ function RecipeCard({
   const imageDebug = imageId ? `${imageSource} (${imageId})` : imageSource;
   return (
     <Card style={styles.planCard} onPress={onPress}>
-      <View style={styles.coverWrap}>
-        <Image
-          key={imageUrl ?? fallbackImage}
-          source={{ uri: imageUrl ?? fallbackImage }}
-          style={styles.cover}
-          contentFit="cover"
-          cachePolicy="none"
-        />
-        {onRemove ? (
-          <IconButton
-            icon="close"
-            size={18}
-            onPress={onRemove}
-            style={styles.removeButton}
-            accessibilityLabel="Remove recipe from plan"
+      <View style={styles.planCardClip}>
+        <View style={styles.coverWrap}>
+          <Image
+            key={imageUrl ?? fallbackImage}
+            source={{ uri: imageUrl ?? fallbackImage }}
+            style={styles.cover}
+            contentFit="cover"
+            cachePolicy="none"
           />
-        ) : null}
+          {onRemove ? (
+            <IconButton
+              icon="close"
+              size={18}
+              onPress={onRemove}
+              style={styles.removeButton}
+              accessibilityLabel="Remove recipe from plan"
+            />
+          ) : null}
+        </View>
+        <Card.Content style={styles.planCardContent}>
+          <Text style={styles.planTitle}>
+            {index + 1}. {recipe.title}
+          </Text>
+          <Text style={styles.planMeta}>
+            {recipe.cookTimeMins} mins • Serves {servingsTarget ?? recipe.servings}
+          </Text>
+          <Text style={styles.planMetaTitle}>Ingredients</Text>
+          {recipe.ingredients.map((ingredient, ingredientIndex) => {
+            const scaled = formatScaledQuantity(
+              ingredient.quantity,
+              ingredient.unit,
+              servingsTarget ? servingsTarget / recipe.servings : 1
+            );
+            return (
+              <Text key={`${recipe.id}-ingredient-${ingredientIndex}`} style={styles.planMeta}>
+                {scaled} <Text style={styles.ingredientName}>{ingredient.name}</Text>
+              </Text>
+            );
+          })}
+        </Card.Content>
       </View>
-      <Card.Content style={styles.planCardContent}>
-        <Text style={styles.planTitle}>
-          {index + 1}. {recipe.title}
-        </Text>
-        <Text style={styles.planMeta}>
-          {recipe.cookTimeMins} mins • Serves {servingsTarget ?? recipe.servings}
-        </Text>
-        <Text style={styles.planMetaTitle}>Ingredients</Text>
-        {recipe.ingredients.map((ingredient, ingredientIndex) => {
-          const scaled = formatScaledQuantity(
-            ingredient.quantity,
-            ingredient.unit,
-            servingsTarget ? servingsTarget / recipe.servings : 1
-          );
-          return (
-            <Text key={`${recipe.id}-ingredient-${ingredientIndex}`} style={styles.planMeta}>
-              {scaled} <Text style={styles.ingredientName}>{ingredient.name}</Text>
-            </Text>
-          );
-        })}
-      </Card.Content>
     </Card>
   );
 }
@@ -484,7 +486,9 @@ export default function PlanScreen() {
         return;
       }
       let segmentIndex = 0;
-      for (const match of segment.text.matchAll(quantityRegex)) {
+      const regex = new RegExp(quantityRegex.source, quantityRegex.flags);
+      let match: RegExpExecArray | null;
+      while ((match = regex.exec(segment.text)) !== null) {
         if (match.index === undefined) {
           continue;
         }
@@ -914,7 +918,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     marginBottom: 10,
     borderRadius: 16,
-    overflow: 'hidden',
     borderWidth: 1,
     borderColor: '#E6E9EF',
     shadowColor: '#0f172a',
@@ -922,6 +925,10 @@ const styles = StyleSheet.create({
     shadowRadius: 18,
     shadowOffset: { width: 0, height: 10 },
     elevation: 6,
+  },
+  planCardClip: {
+    borderRadius: 16,
+    overflow: 'hidden',
   },
   coverWrap: {
     position: 'relative',
