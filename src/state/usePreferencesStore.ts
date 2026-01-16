@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { appStorage } from './storage';
+import { createUserScopedStorage } from './storage';
 
 type PreferencesState = {
   postalCode: string;
@@ -43,6 +43,6 @@ export const usePreferencesStore = create<PreferencesState>()(
           };
         }),
     }),
-    { name: 'dealchef-preferences', storage: appStorage }
+    { name: 'dealchef-preferences', storage: createUserScopedStorage() }
   )
 );

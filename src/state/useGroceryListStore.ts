@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { GroceryListItem } from '@/src/types';
-import { appStorage } from './storage';
+import { createUserScopedStorage } from './storage';
 
 type GroceryListState = {
   items: GroceryListItem[];
@@ -28,6 +28,6 @@ export const useGroceryListStore = create<GroceryListState>()(
         set({ items });
       },
     }),
-    { name: 'dealchef-grocery-list', storage: appStorage }
+    { name: 'dealchef-grocery-list', storage: createUserScopedStorage() }
   )
 );

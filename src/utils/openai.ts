@@ -1,4 +1,5 @@
 import type { Recipe, RecipeIngredient } from '@/src/types';
+import { useAuthStore } from '@/src/state/useAuthStore';
 
 type OpenAiRecipePayload = {
   title: string;
@@ -84,6 +85,7 @@ export async function generateRecipesFromPrompt(input: {
   cuisines: string[];
   count?: number;
 }): Promise<{ recipes: Recipe[]; cuisineFallback: boolean }> {
+  const userId = useAuthStore.getState().userId;
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   let response: Response;
@@ -98,6 +100,7 @@ export async function generateRecipesFromPrompt(input: {
         prompt: input.prompt,
         cuisines: input.cuisines,
         count: input.count,
+        ...(userId ? { userId } : {}),
       }),
     });
   } catch (error) {

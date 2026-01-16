@@ -8,6 +8,7 @@ import { GradientTitle } from '@/components/gradient-title';
 import { usePreferencesStore } from '@/src/state/usePreferencesStore';
 import { formatPostalCode } from '@/src/utils/postalCode';
 import { resolveStoreLogo } from '@/src/utils/storeLogos';
+import { useGoogleAuth } from '@/src/hooks/useGoogleAuth';
 
 export default function SettingsScreen() {
   const {
@@ -17,6 +18,8 @@ export default function SettingsScreen() {
     householdSize,
     favoriteStores,
   } = usePreferencesStore();
+  const { userId, name, email, photoUrl, authError, signingIn, canSignIn, signIn, signOut } =
+    useGoogleAuth();
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
@@ -25,6 +28,49 @@ export default function SettingsScreen() {
       </View>
       <View style={styles.contentSurface}>
         <PatternBackground />
+
+        <View style={[styles.card, styles.accountCard]}>
+          <Text style={styles.cardTitle}>Account</Text>
+          {userId ? (
+            <View style={styles.accountRow}>
+              <View style={styles.avatarWrap}>
+                {photoUrl ? (
+                  <Image source={{ uri: photoUrl }} style={styles.avatar} />
+                ) : (
+                  <View style={styles.avatarFallback} />
+                )}
+              </View>
+              <View style={styles.accountMeta}>
+                <Text style={styles.accountName}>{name || 'Google user'}</Text>
+                <Text style={styles.accountEmail}>{email || 'Signed in with Google'}</Text>
+              </View>
+            </View>
+          ) : (
+            <Text style={styles.helperText}>Sign in to personalize your recipe generation.</Text>
+          )}
+
+          {authError ? <Text style={styles.errorText}>{authError}</Text> : null}
+          <Button
+            mode={userId ? 'outlined' : 'contained'}
+            onPress={() => {
+              if (userId) {
+                signOut();
+                router.replace('/login');
+              } else {
+                signIn();
+              }
+            }}
+            disabled={!canSignIn || signingIn}
+            loading={signingIn}
+            buttonColor={userId ? undefined : '#1B7F3A'}
+            textColor={userId ? '#1B7F3A' : '#FFFFFF'}
+            style={styles.primaryButton}>
+            {userId ? 'Sign out' : 'Sign in with Google'}
+          </Button>
+          {!canSignIn ? (
+            <Text style={styles.helperText}>Add Google OAuth client IDs to enable sign-in.</Text>
+          ) : null}
+        </View>
 
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Your Kitchen Settings</Text>
@@ -104,6 +150,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#D9DEE6',
     padding: 16,
   },
+  accountCard: {
+    marginBottom: 16,
+  },
   card: {
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
@@ -166,5 +215,54 @@ const styles = StyleSheet.create({
   },
   primaryButton: {
     marginTop: 8,
+  },
+  accountRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 8,
+  },
+  avatarWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  avatar: {
+    width: 44,
+    height: 44,
+  },
+  avatarFallback: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: '#E6E9EF',
+  },
+  accountMeta: {
+    flex: 1,
+  },
+  accountName: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#1F1F1F',
+  },
+  accountEmail: {
+    fontSize: 12,
+    color: '#5F6368',
+    marginTop: 2,
+  },
+  helperText: {
+    fontSize: 12,
+    color: '#5F6368',
+    marginBottom: 8,
+  },
+  errorText: {
+    fontSize: 12,
+    color: '#C62828',
+    marginBottom: 8,
   },
 });

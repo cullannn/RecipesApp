@@ -57,7 +57,9 @@ export function useRemoteImage(
       imageCache.set(cacheKey, normalizedUrl);
       setImageUrl(normalizedUrl);
       currentUrlRef.current = normalizedUrl;
-      return;
+      if (kind !== 'recipe' || !normalizedUrl.includes('unsplash.com')) {
+        return;
+      }
     }
     const cached = imageCache.get(cacheKey);
     if (cached) {
