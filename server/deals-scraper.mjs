@@ -1,14 +1,34 @@
 import http from 'node:http';
-import { readFile, writeFile, mkdir } from 'node:fs/promises';
+import { readFile, writeFile, mkdir, access } from 'node:fs/promises';
 import path from 'node:path';
+import crypto from 'node:crypto';
 
 const PORT = Number.parseInt(process.env.DEALS_SERVER_PORT ?? '8790', 10);
 const CACHE_DIR = path.join(process.cwd(), 'server', 'cache');
+const IMAGE_CACHE_DIR = path.join(CACHE_DIR, 'deal-images');
 const CACHE_TTL_MS = 1000 * 60 * 60;
 const FETCH_TIMEOUT_MS = Number.parseInt(
   process.env.DEALS_FETCH_TIMEOUT_MS ?? '12000',
   10
 );
+const IMAGE_FETCH_TIMEOUT_MS = Number.parseInt(
+  process.env.DEALS_IMAGE_FETCH_TIMEOUT_MS ?? '12000',
+  10
+);
+const IMAGE_CACHE_CONCURRENCY = Number.parseInt(
+  process.env.DEALS_IMAGE_CACHE_CONCURRENCY ?? '6',
+  10
+);
+
+const IMAGE_MIME_TYPES = {
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.png': 'image/png',
+  '.webp': 'image/webp',
+  '.gif': 'image/gif',
+};
+
+const imageCacheInFlight = new Set();
 
 const FALLBACK_USER_AGENT =
   'Mozilla/5.0 (compatible; DealChefScraper/1.0; +https://github.com/CodexApps/RecipesApp)';
@@ -319,6 +339,24 @@ const NON_GROCERY_KEYWORDS = [
   'tie',
   'blanket',
   'socks',
+  'dewalt',
+  'battery',
+  'batteries',
+  'fridge',
+  'refrigerator',
+  'saw',
+  'tool',
+  'tools',
+  'tote',
+  'fan',
+  'fans',
+  'brush',
+  'melter',
+  'deadbolt',
+  'accept wechat',
+  'wechat',
+  'alipay',
+  'alpay',
 ];
 
 const FLYERTOWN_STORES = [
@@ -663,6 +701,31 @@ function isGroceryItem(title, item) {
     }
   }
   return true;
+}
+
+function isNonGroceryDeal(title) {
+  if (!title) {
+    return false;
+  }
+  const text = String(title).toLowerCase();
+  const trimmed = text.replace(/\s+/g, '');
+  if (trimmed.startsWith('cstcg')) {
+    return true;
+  }
+  if (/^[a-z0-9*]{8,}$/.test(trimmed) && /[a-z]{2,}/.test(text) && /\d{2,}/.test(text)) {
+    return true;
+  }
+  for (const rule of NON_GROCERY_RULES) {
+    if (rule.test(text)) {
+      return true;
+    }
+  }
+  for (const keyword of NON_GROCERY_KEYWORDS) {
+    if (text.includes(keyword)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 function isGroceryCategory(category) {
@@ -1017,6 +1080,131 @@ async function ensureCacheDir() {
   await mkdir(CACHE_DIR, { recursive: true });
 }
 
+async function ensureImageCacheDir() {
+  await mkdir(IMAGE_CACHE_DIR, { recursive: true });
+}
+
+async function fileExists(filePath) {
+  try {
+    await access(filePath);
+    return true;
+  } catch (error) {
+    return false;
+  }
+}
+
+function extensionFromUrl(url) {
+  const match = url.match(/\.(png|jpe?g|webp|gif)(\?|#|$)/i);
+  return match ? `.${match[1].toLowerCase()}` : '';
+}
+
+function extensionFromContentType(contentType) {
+  if (!contentType) {
+    return '';
+  }
+  if (contentType.includes('image/jpeg')) {
+    return '.jpg';
+  }
+  if (contentType.includes('image/png')) {
+    return '.png';
+  }
+  if (contentType.includes('image/webp')) {
+    return '.webp';
+  }
+  if (contentType.includes('image/gif')) {
+    return '.gif';
+  }
+  return '';
+}
+
+async function fetchImageBuffer(url) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), IMAGE_FETCH_TIMEOUT_MS);
+  let response;
+  try {
+    response = await fetch(url, {
+      headers: {
+        Accept: 'image/*',
+        'User-Agent': FALLBACK_USER_AGENT,
+      },
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timeoutId);
+  }
+  if (!response.ok) {
+    throw new Error(`Image fetch failed: ${response.status}`);
+  }
+  const contentType = response.headers.get('content-type') ?? '';
+  const buffer = Buffer.from(await response.arrayBuffer());
+  return { buffer, contentType };
+}
+
+async function cacheImageUrl(url) {
+  if (!url || typeof url !== 'string' || !url.startsWith('http')) {
+    return null;
+  }
+  const hash = crypto.createHash('sha256').update(url).digest('hex').slice(0, 24);
+  const extFromUrl = extensionFromUrl(url);
+  const baseName = hash + (extFromUrl || '');
+  const initialPath = path.join(IMAGE_CACHE_DIR, baseName);
+  if (await fileExists(initialPath)) {
+    return baseName;
+  }
+  await ensureImageCacheDir();
+  const { buffer, contentType } = await fetchImageBuffer(url);
+  const extFromType = extensionFromContentType(contentType);
+  const finalName = hash + (extFromType || extFromUrl || '.jpg');
+  const finalPath = path.join(IMAGE_CACHE_DIR, finalName);
+  if (!(await fileExists(finalPath))) {
+    await writeFile(finalPath, buffer);
+  }
+  return finalName;
+}
+
+async function cacheDealImages(deals) {
+  const updated = deals.map((deal) => ({ ...deal }));
+  const queue = updated
+    .map((deal, index) => ({ deal, index, url: deal.imageUrl }))
+    .filter((entry) => typeof entry.url === 'string' && entry.url.length > 0);
+  let cursor = 0;
+  const workers = Array.from({ length: Math.max(1, IMAGE_CACHE_CONCURRENCY) }, async () => {
+    while (cursor < queue.length) {
+      const current = queue[cursor];
+      cursor += 1;
+      try {
+        const fileName = await cacheImageUrl(current.url);
+        if (fileName) {
+          updated[current.index] = {
+            ...updated[current.index],
+            imageUrl: `/api/image-file/${fileName}`,
+          };
+        }
+      } catch (error) {
+        // Keep remote image URL on failures.
+      }
+    }
+  });
+  await Promise.all(workers);
+  return updated;
+}
+
+async function cacheDealImagesInBackground(postalCode, payload) {
+  if (imageCacheInFlight.has(postalCode)) {
+    return;
+  }
+  imageCacheInFlight.add(postalCode);
+  try {
+    const updatedDeals = await cacheDealImages(payload.deals ?? []);
+    const nextPayload = { ...payload, deals: updatedDeals };
+    await saveCache(postalCode, nextPayload);
+  } catch (error) {
+    // Ignore cache errors; keep remote image URLs.
+  } finally {
+    imageCacheInFlight.delete(postalCode);
+  }
+}
+
 async function loadCache(postalCode) {
   try {
     const filePath = path.join(CACHE_DIR, `${postalCode}.json`);
@@ -1054,9 +1242,15 @@ async function scrapeFlyerDeals({ postalCode }) {
       deals.push(...result.value);
     }
   });
-  const filteredDeals = deals.filter(
-    (deal) => deal.store === 'Costco' || isGroceryCategory(deal.category)
-  );
+  const filteredDeals = deals.filter((deal) => {
+    if (isNonGroceryDeal(deal.title)) {
+      return false;
+    }
+    if (isGroceryCategory(deal.category)) {
+      return true;
+    }
+    return String(deal.category ?? '').toLowerCase() === 'other';
+  });
   return {
     postalCode,
     stores: storeList,
@@ -1072,11 +1266,18 @@ async function getDealsForPostal(postalCode) {
   if (cached && cached.fetchedAt) {
     const age = now - Date.parse(cached.fetchedAt);
     if (Number.isFinite(age) && age < CACHE_TTL_MS) {
+      const hasRemoteImages = (cached.deals ?? []).some((deal) =>
+        typeof deal.imageUrl === 'string' && deal.imageUrl.startsWith('http')
+      );
+      if (hasRemoteImages) {
+        cacheDealImagesInBackground(normalized, cached);
+      }
       return cached;
     }
   }
   const fresh = await scrapeFlyerDeals({ postalCode: normalized });
   await saveCache(normalized, fresh);
+  cacheDealImagesInBackground(normalized, fresh);
   return fresh;
 }
 
@@ -1101,6 +1302,27 @@ const server = http.createServer(async (req, res) => {
     return;
   }
   const url = new URL(req.url ?? '/', `http://${req.headers.host ?? 'localhost'}`);
+  if (url.pathname.startsWith('/api/image-file/')) {
+    const fileName = decodeURIComponent(url.pathname.replace('/api/image-file/', '')).trim();
+    if (!fileName || fileName.includes('..')) {
+      sendJson(res, 400, { error: 'Invalid file.' });
+      return;
+    }
+    try {
+      const filePath = path.join(IMAGE_CACHE_DIR, fileName);
+      const contents = await readFile(filePath);
+      const ext = path.extname(fileName).toLowerCase();
+      const contentType = IMAGE_MIME_TYPES[ext] ?? 'application/octet-stream';
+      res.writeHead(200, {
+        'Content-Type': contentType,
+        'Cache-Control': 'public, max-age=31536000, immutable',
+      });
+      res.end(contents);
+    } catch (error) {
+      sendJson(res, 404, { error: 'Image not found.' });
+    }
+    return;
+  }
   if (url.pathname === '/api/deals') {
     const postalCode = url.searchParams.get('postalCode');
     if (!postalCode) {

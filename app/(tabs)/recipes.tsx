@@ -130,27 +130,39 @@ function RecipeListItem({
   return (
     <Card style={styles.card} onPress={() => router.push(`/recipe/${item.id}`)}>
       <View style={styles.cardClip}>
-        <Image
-          key={imageUrl ?? fallbackImage}
-          source={{ uri: imageUrl ?? fallbackImage }}
-          style={styles.cover}
-          contentFit="cover"
-          cachePolicy="none"
-        />
+        <View style={styles.coverWrap}>
+          <Image
+            key={imageUrl ?? fallbackImage}
+            source={{ uri: imageUrl ?? fallbackImage }}
+            style={styles.cover}
+            contentFit="cover"
+            cachePolicy="none"
+          />
+          <IconButton
+            icon="close"
+            size={16}
+            onPress={() => onRemove(item.id, dateKey, item)}
+            style={styles.removeButton}
+            accessibilityLabel="Remove recipe from history"
+          />
+        </View>
         <Card.Content style={styles.cardContent}>
-          <View style={styles.cardTitleRow}>
-            <Text style={styles.cardTitle}>{item.title}</Text>
+          <View style={styles.cardContentRow}>
+            <View style={styles.cardTextBlock}>
+              <Text style={styles.cardTitle}>{item.title}</Text>
+              <Text style={styles.cardMeta}>
+                {item.cookTimeMins} mins • Serves {item.servings}
+              </Text>
+            </View>
             <IconButton
-              icon="close"
-              size={16}
-              onPress={() => onRemove(item.id, dateKey, item)}
-              style={styles.removeButton}
-              accessibilityLabel="Remove recipe from history"
+              icon="chevron-right"
+              size={26}
+              onPress={() => router.push(`/recipe/${item.id}`)}
+              style={styles.actionButton}
+              iconColor="#1B7F3A"
+              accessibilityLabel="View recipe details"
             />
           </View>
-          <Text style={styles.cardMeta}>
-            {item.cookTimeMins} mins • Serves {item.servings}
-          </Text>
         </Card.Content>
       </View>
     </Card>
@@ -228,6 +240,9 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     overflow: 'hidden',
   },
+  coverWrap: {
+    position: 'relative',
+  },
   cover: {
     width: '100%',
     height: 140,
@@ -235,7 +250,7 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 16,
   },
   cardContent: {
-    paddingTop: 10,
+    padding: 12,
   },
   cardTitle: {
     fontSize: 14,
@@ -243,13 +258,32 @@ const styles = StyleSheet.create({
     marginBottom: 2,
     color: '#1F1F1F',
   },
-  cardTitleRow: {
+  cardContentRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  cardTextBlock: {
+    flex: 1,
+    paddingRight: 8,
   },
   removeButton: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    backgroundColor: '#FFFFFF',
+  },
+  actionButton: {
     margin: 0,
+    backgroundColor: 'transparent',
+    padding: 0,
+    width: 32,
+    alignItems: 'flex-end',
+    shadowColor: '#1B7F3A',
+    shadowOpacity: 0.35,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 4,
   },
   cardMeta: {
     fontSize: 12,

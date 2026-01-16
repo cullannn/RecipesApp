@@ -53,6 +53,7 @@ function FilterItem({
 
 function DealCard({
   item,
+  onPress,
 }: {
   item: {
     id: string;
@@ -65,6 +66,7 @@ function DealCard({
     validTo?: string;
     imageUrl?: string;
   };
+  onPress?: () => void;
 }) {
   const imageUrl = useRemoteImage(item.title, item.imageUrl ?? null, { kind: 'deal' });
   const buildWasPrice = (price: number) => {
@@ -93,7 +95,7 @@ function DealCard({
     ? Math.round(((resolvedWasPrice! - (item.price ?? 0)) / resolvedWasPrice!) * 100)
     : null;
   return (
-    <Card style={styles.card}>
+    <Card style={styles.card} onPress={onPress}>
       <View style={styles.cardClip}>
         <View style={styles.cardRow}>
           <Image
@@ -116,10 +118,10 @@ function DealCard({
                   <>CAD {(item.price ?? 0).toFixed(2)} / {item.unit}</>
                 )
               ) : (
-                <>
-                  <Text style={styles.priceWas}>Price Coming Soon...</Text>
-                </>
-              )}
+              <>
+                <Text style={styles.priceWas}>On Sale - Click To View</Text>
+              </>
+            )}
             </Text>
             {savingsPercent !== null ? (
               <Text style={styles.cardSavings}>Save {savingsPercent}%</Text>
@@ -131,6 +133,37 @@ function DealCard({
   );
 }
 
+function DealImageModal({
+  deal,
+  onClose,
+}: {
+  deal: { title: string; imageUrl?: string } | null;
+  onClose: () => void;
+}) {
+  const imageUrl = useRemoteImage(deal?.title ?? '', deal?.imageUrl ?? null, { kind: 'deal' });
+  return (
+    <Modal animationType="fade" transparent visible={Boolean(deal)} onRequestClose={onClose}>
+      <Pressable style={styles.imageModalBackdrop} onPress={onClose}>
+        <Pressable style={styles.imageModalCard} onPress={() => {}}>
+          {deal ? (
+            <>
+              <Image
+                source={{ uri: imageUrl ?? fallbackImage }}
+                style={styles.imageModalImage}
+                contentFit="contain"
+                cachePolicy="none"
+              />
+              <Pressable style={styles.imageModalClose} onPress={onClose} accessibilityLabel="Close deal image">
+                <MaterialCommunityIcons name="close" size={18} color="#1F1F1F" />
+              </Pressable>
+              <Text style={styles.imageModalTitle}>{deal.title}</Text>
+            </>
+          ) : null}
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
+}
 function LoadingDealsSplash() {
   const spinValue = useRef(new Animated.Value(0)).current;
   const floatValue = useRef(new Animated.Value(0)).current;
@@ -234,6 +267,7 @@ export default function DealsScreen() {
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState('');
   const [searchModalVisible, setSearchModalVisible] = useState(false);
+  const [selectedDeal, setSelectedDeal] = useState<{ title: string; imageUrl?: string } | null>(null);
   const chevronAnims = useRef(new Map<string, Animated.Value>());
   const dealsQuery = useDeals({
     postalCode,
@@ -413,6 +447,7 @@ export default function DealsScreen() {
           </View>
         </View>
       </Modal>
+      <DealImageModal deal={selectedDeal} onClose={() => setSelectedDeal(null)} />
       <View style={styles.filterBar}>
         <View style={styles.headerRow}>
           <GradientTitle text={cityLabel ? `Deals in ${cityLabel}` : 'Deals'} style={styles.title} />
@@ -521,6 +556,7 @@ export default function DealsScreen() {
                       <DealCard
                         key={deal.id}
                         item={deal}
+                        onPress={() => setSelectedDeal({ title: deal.title, imageUrl: deal.imageUrl })}
                       />
                     );
                   })}
@@ -582,6 +618,50 @@ const styles = StyleSheet.create({
   },
   searchModalButton: {
     marginTop: 8,
+  },
+  imageModalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.55)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+  },
+  imageModalCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    width: '100%',
+    maxWidth: 420,
+    padding: 12,
+    shadowColor: '#0f172a',
+    shadowOpacity: 0.2,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 12 },
+    elevation: 8,
+  },
+  imageModalImage: {
+    width: '100%',
+    height: 320,
+    borderRadius: 12,
+    backgroundColor: '#F1F3F4',
+  },
+  imageModalClose: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#1B7F3A',
+  },
+  imageModalTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1F1F1F',
+    marginTop: 10,
   },
   emptyState: {
     alignItems: 'center',

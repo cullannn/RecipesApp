@@ -946,7 +946,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
   },
   planCardContent: {
-    paddingTop: 12,
+    padding: 12,
   },
   planTitle: {
     fontSize: 14,

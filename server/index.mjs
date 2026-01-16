@@ -3,6 +3,7 @@ import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import 'dotenv/config';
+import sharp from 'sharp';
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const OPENAI_MODEL = process.env.OPENAI_MODEL;
@@ -11,7 +12,9 @@ const OPENAI_TITLE_MODEL = process.env.OPENAI_TITLE_MODEL ?? 'gpt-5-nano';
 const OPENAI_NUTRITION_MODEL = process.env.OPENAI_NUTRITION_MODEL ?? 'gpt-5-nano';
 const OPENAI_IMAGE_PROMPT_MODEL = process.env.OPENAI_IMAGE_PROMPT_MODEL ?? 'gpt-5-nano';
 const OPENAI_IMAGE_MODEL = process.env.OPENAI_IMAGE_MODEL ?? 'gpt-image-1';
-const OPENAI_IMAGE_SIZE = process.env.OPENAI_IMAGE_SIZE ?? '512x512';
+const OPENAI_IMAGE_SIZE = process.env.OPENAI_IMAGE_SIZE ?? 'auto';
+const OPENAI_IMAGE_MAX_DIM = Number.parseInt(process.env.OPENAI_IMAGE_MAX_DIM ?? '512', 10);
+const OPENAI_IMAGE_QUALITY = Number.parseInt(process.env.OPENAI_IMAGE_QUALITY ?? '80', 10);
 const PORT = Number.parseInt(process.env.PORT ?? '8787', 10);
 const CACHE_DIR = path.join(process.cwd(), 'server', 'cache');
 const IMAGE_CACHE_PATH = path.join(CACHE_DIR, 'images.json');
@@ -125,6 +128,15 @@ function buildImageFileName(query) {
   return `${hash}.png`;
 }
 
+function buildScaledImageFileName(query) {
+  const hash = crypto
+    .createHash('sha256')
+    .update(`${query}:${OPENAI_IMAGE_MAX_DIM}:${OPENAI_IMAGE_QUALITY}`)
+    .digest('hex')
+    .slice(0, 16);
+  return `${hash}.jpg`;
+}
+
 async function writeImageFile(query, b64) {
   await ensureImageFilesDir();
   const fileName = buildImageFileName(query);
@@ -132,6 +144,53 @@ async function writeImageFile(query, b64) {
   const buffer = Buffer.from(b64, 'base64');
   await writeFile(filePath, buffer);
   return fileName;
+}
+
+async function writeScaledImageFile(query, buffer) {
+  await ensureImageFilesDir();
+  const fileName = buildScaledImageFileName(query);
+  const filePath = path.join(IMAGE_FILES_DIR, fileName);
+  const resized = await sharp(buffer)
+    .resize({
+      width: OPENAI_IMAGE_MAX_DIM,
+      height: OPENAI_IMAGE_MAX_DIM,
+      fit: 'inside',
+      withoutEnlargement: true,
+    })
+    .jpeg({ quality: OPENAI_IMAGE_QUALITY })
+    .toBuffer();
+  await writeFile(filePath, resized);
+  return fileName;
+}
+
+async function fetchImageBuffer(url) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), OPENAI_IMAGE_TIMEOUT_MS);
+  try {
+    const response = await fetch(url, { signal: controller.signal });
+    if (!response.ok) {
+      throw new Error(`Image fetch failed: ${response.status}`);
+    }
+    return Buffer.from(await response.arrayBuffer());
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+async function createScaledImageFileFromGenerated(query, generated) {
+  if (generated?.kind === 'b64') {
+    const buffer = Buffer.from(generated.data, 'base64');
+    try {
+      return await writeScaledImageFile(query, buffer);
+    } catch {
+      return await writeImageFile(query, generated.data);
+    }
+  }
+  if (generated?.kind === 'url') {
+    const buffer = await fetchImageBuffer(generated.data);
+    return await writeScaledImageFile(query, buffer);
+  }
+  return null;
 }
 
 async function convertDataUrlToFile(query, dataUrl) {
@@ -144,7 +203,12 @@ async function convertDataUrlToFile(query, dataUrl) {
   if (!b64) {
     return null;
   }
-  return writeImageFile(query, b64);
+  const buffer = Buffer.from(b64, 'base64');
+  try {
+    return await writeScaledImageFile(query, buffer);
+  } catch {
+    return writeImageFile(query, b64);
+  }
 }
 
 function logImageError(context, error) {
@@ -440,10 +504,8 @@ async function attachRecipeImages(recipes, baseUrl) {
       try {
         const prompt = await polishImagePrompt(`High-quality food photo of ${title}.`);
         const generated = await callOpenAiImage(prompt);
-        if (generated?.kind === 'url') {
-          imageUrl = generated.data;
-        } else if (generated?.kind === 'b64') {
-          const fileName = await writeImageFile(normalized, generated.data);
+        const fileName = await createScaledImageFileFromGenerated(normalized, generated);
+        if (fileName) {
           imageUrl = `${baseUrl}/api/image-file/${fileName}`;
         }
       } catch (error) {
@@ -509,10 +571,8 @@ async function attemptOpenAiImage({ cacheKey, normalized, query, baseUrl }) {
     }
     const cache = await getImageCache();
     let imageUrl;
-    if (generated.kind === 'url') {
-      imageUrl = generated.data;
-    } else if (generated.kind === 'b64') {
-      const fileName = await writeImageFile(normalized, generated.data);
+    const fileName = await createScaledImageFileFromGenerated(normalized, generated);
+    if (fileName) {
       imageUrl = `${baseUrl}/api/image-file/${fileName}`;
     }
     if (imageUrl) {
