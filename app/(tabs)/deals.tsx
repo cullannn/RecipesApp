@@ -709,7 +709,8 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   searchInput: {
-    height: 44,
+    height: 40,
+    marginTop: 8,
     backgroundColor: '#FFFFFF',
   },
   searchButton: {
@@ -738,7 +739,7 @@ const styles = StyleSheet.create({
     color: '#1F1F1F',
   },
   searchModalButton: {
-    marginTop: 8,
+    marginTop: 6,
   },
   imageModalBackdrop: {
     flex: 1,

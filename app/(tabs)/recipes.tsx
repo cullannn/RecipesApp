@@ -136,7 +136,7 @@ export default function RecipesScreen() {
             <Text style={styles.searchModalTitle}>Search recipes</Text>
             <TextInput
               mode="outlined"
-              placeholder="Search recipes"
+              placeholder="Salmon, Beef, Noodles..."
               value={searchInput}
               onChangeText={setSearchInput}
               onSubmitEditing={handleSearchSubmit}
@@ -490,11 +490,11 @@ const styles = StyleSheet.create({
     color: '#1F1F1F',
   },
   searchModalInput: {
-    height: 44,
+    height: 40,
     backgroundColor: '#FFFFFF',
     marginTop: 8,
   },
   searchModalButton: {
-    marginTop: 8,
+    marginTop: 6,
   },
 });
