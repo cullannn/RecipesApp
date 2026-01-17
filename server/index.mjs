@@ -15,6 +15,7 @@ const NEBIUS_IMAGE_BASE_URL =
 const NEBIUS_IMAGE_MODEL =
   process.env.NEBIUS_IMAGE_MODEL ?? 'black-forest-labs/flux-schnell';
 const NEBIUS_IMAGE_SIZE = process.env.NEBIUS_IMAGE_SIZE;
+const NEBIUS_IMAGE_RESPONSE = process.env.NEBIUS_IMAGE_RESPONSE;
 const NEBIUS_TEXT_BASE_URL =
   process.env.NEBIUS_TEXT_BASE_URL ?? 'https://api.tokenfactory.nebius.com/v1';
 const NEBIUS_RECIPE_MODEL =
@@ -676,6 +677,7 @@ async function callNebiusImage(prompt, timeoutMs = OPENAI_IMAGE_TIMEOUT_MS) {
         model: NEBIUS_IMAGE_MODEL,
         prompt,
         ...(NEBIUS_IMAGE_SIZE ? { size: NEBIUS_IMAGE_SIZE } : {}),
+        ...(NEBIUS_IMAGE_RESPONSE ? { response_format: NEBIUS_IMAGE_RESPONSE } : {}),
       }),
     });
   } catch (error) {
