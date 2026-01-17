@@ -10,7 +10,7 @@ import { usePreferencesStore } from '@/src/state/usePreferencesStore';
 import { formatPostalCode, isValidCanadianPostalCode, normalizePostalCode } from '@/src/utils/postalCode';
 import { resolveStoreLogo } from '@/src/utils/storeLogos';
 
-const dietaryOptions = ['None', 'Vegetarian', 'Pescatarian', 'Halal', 'Keto'];
+const dietaryOptions = ['None', 'Vegetarian', 'Vegan', 'Pescatarian', 'Halal', 'Keto'];
 
 export default function OnboardingScreen() {
   const {

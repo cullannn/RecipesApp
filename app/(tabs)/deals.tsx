@@ -7,8 +7,10 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 import { PatternBackground } from '@/components/pattern-background';
 import { GradientTitle } from '@/components/gradient-title';
+import { LogoWithShimmer } from '@/components/logo-with-shimmer';
 import { useDeals } from '@/src/hooks/useDeals';
 import { useRemoteImage } from '@/src/hooks/useRemoteImage';
+import { useMealPlanStore } from '@/src/state/useMealPlanStore';
 import { usePreferencesStore } from '@/src/state/usePreferencesStore';
 import { getStoreDisplayName, normalizeStoreName, resolveStoreLogo, shouldIgnoreStore } from '@/src/utils/storeLogos';
 import { getGtaCityForPostalCode } from '@/src/utils/postalCode';
@@ -292,6 +294,7 @@ const buildStoreFilterList = (stores: string[], favorites: string[]) => {
 
 export default function DealsScreen() {
   const { postalCode, favoriteStores } = usePreferencesStore();
+  const { isGeneratingPlan } = useMealPlanStore();
   const [selectedStore, setSelectedStore] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [, startTransition] = useTransition();
@@ -577,12 +580,7 @@ export default function DealsScreen() {
       <View style={styles.headerBar}>
         <View style={styles.headerRow}>
           <View style={styles.logoTitleRow}>
-            <Image
-              source={require('../../assets/logos/app-logo/forkcast-logo-transparent.png')}
-              style={styles.headerLogo}
-              resizeMode="contain"
-              tintColor="#1B1B1B"
-            />
+            <LogoWithShimmer isActive={isGeneratingPlan} tintColor="#1B1B1B" size={32} />
             <Text style={styles.headerTitle}>{cityLabel ? `Deals in ${cityLabel}` : 'Deals'}</Text>
           </View>
           <AnimatedPressable
@@ -698,10 +696,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-  },
-  headerLogo: {
-    width: 32,
-    height: 32,
   },
   headerTitle: {
     fontSize: 20,
@@ -997,16 +991,11 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   card: {
-    marginBottom: 10,
+    marginBottom: 6,
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
     borderWidth: 1,
     borderColor: '#E6E9EF',
-    shadowColor: '#0f172a',
-    shadowOpacity: 0.14,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 10 },
-    elevation: 6,
   },
   cardPressable: {
     borderRadius: 16,

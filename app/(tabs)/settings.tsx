@@ -4,7 +4,9 @@ import { router } from 'expo-router';
 import { Button } from 'react-native-paper';
 
 import { PatternBackground } from '@/components/pattern-background';
+import { LogoWithShimmer } from '@/components/logo-with-shimmer';
 import { usePreferencesStore } from '@/src/state/usePreferencesStore';
+import { useMealPlanStore } from '@/src/state/useMealPlanStore';
 import { formatPostalCode } from '@/src/utils/postalCode';
 import { resolveStoreLogo } from '@/src/utils/storeLogos';
 import { useGoogleAuth } from '@/src/hooks/useGoogleAuth';
@@ -17,6 +19,7 @@ export default function SettingsScreen() {
     householdSize,
     favoriteStores,
   } = usePreferencesStore();
+  const { isGeneratingPlan } = useMealPlanStore();
   const { userId, name, email, photoUrl, authError, signingIn, canSignIn, signIn, signOut } =
     useGoogleAuth();
 
@@ -25,12 +28,7 @@ export default function SettingsScreen() {
       <View style={styles.headerBar}>
         <View style={styles.headerRow}>
           <View style={styles.logoTitleRow}>
-            <Image
-              source={require('../../assets/logos/app-logo/forkcast-logo-transparent.png')}
-              style={styles.headerLogo}
-              resizeMode="contain"
-              tintColor="#1F1F1F"
-            />
+            <LogoWithShimmer isActive={isGeneratingPlan} tintColor="#1F1F1F" size={32} />
             <View>
               <Text style={styles.title}>Settings</Text>
             </View>
@@ -186,10 +184,6 @@ const styles = StyleSheet.create({
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-  },
-  headerLogo: {
-    width: 32,
-    height: 32,
   },
   title: {
     fontSize: 20,

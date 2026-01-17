@@ -8,6 +8,7 @@ type MealPlanState = {
   mealsRequested: number;
   maxCookTimeMins?: number;
   servings?: number;
+  isGeneratingPlan: boolean;
   cuisineThemes: string[];
   aiPrompt: string;
   aiRecipes: Recipe[];
@@ -17,6 +18,7 @@ type MealPlanState = {
   setMealsRequested: (count: number) => void;
   setMaxCookTimeMins: (mins?: number) => void;
   setServings: (servings?: number) => void;
+  setIsGeneratingPlan: (isGeneratingPlan: boolean) => void;
   setCuisineThemes: (themes: string[]) => void;
   setAiPrompt: (prompt: string) => void;
   setAiRecipes: (recipes: Recipe[]) => void;
@@ -31,8 +33,9 @@ export const useMealPlanStore = create<MealPlanState>()(
   persist(
     (set, get) => ({
       mealsRequested: 3,
-      maxCookTimeMins: undefined,
+      maxCookTimeMins: 60,
       servings: undefined,
+      isGeneratingPlan: false,
       cuisineThemes: [],
       aiPrompt: '',
       aiRecipes: [],
@@ -42,6 +45,7 @@ export const useMealPlanStore = create<MealPlanState>()(
       setMealsRequested: (mealsRequested) => set({ mealsRequested }),
       setMaxCookTimeMins: (maxCookTimeMins) => set({ maxCookTimeMins }),
       setServings: (servings) => set({ servings }),
+      setIsGeneratingPlan: (isGeneratingPlan) => set({ isGeneratingPlan }),
       setCuisineThemes: (cuisineThemes) => set({ cuisineThemes }),
       setAiPrompt: (aiPrompt) => set({ aiPrompt }),
       setAiRecipes: (aiRecipes) => set({ aiRecipes }),

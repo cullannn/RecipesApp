@@ -7,14 +7,16 @@ import { router } from 'expo-router';
 
 import { useDeals } from '@/src/hooks/useDeals';
 import { PatternBackground } from '@/components/pattern-background';
+import { LogoWithShimmer } from '@/components/logo-with-shimmer';
 import { useRemoteImage } from '@/src/hooks/useRemoteImage';
 import { useRecipes } from '@/src/hooks/useRecipes';
-import type { MealPlan } from '@/src/types';
+import type { DealItem, MealPlan } from '@/src/types';
 import { buildGroceryList, generateMealPlan } from '@/src/logic/mealPlan';
 import { useGroceryListStore } from '@/src/state/useGroceryListStore';
 import { useMealPlanStore } from '@/src/state/useMealPlanStore';
 import { usePreferencesStore } from '@/src/state/usePreferencesStore';
 import { matchDealToIngredient } from '@/src/utils/matching';
+import { normalizeTokens } from '@/src/utils/normalization';
 import { getStoreDisplayName, shouldIgnoreStore } from '@/src/utils/storeLogos';
 import { generateRecipesFromPrompt } from '@/src/utils/openai';
 
@@ -46,6 +48,46 @@ const cuisineKeywords = [
   'mediterranean',
   'american',
 ];
+
+const TOP_SAVINGS_ALLOWED_TOKENS = new Set([
+  'fresh',
+  'frozen',
+  'organic',
+  'boneless',
+  'skinless',
+  'lean',
+  'extra',
+  'large',
+  'small',
+  'medium',
+  'whole',
+  'seedless',
+  'sweet',
+  'baby',
+  'green',
+  'red',
+  'white',
+  'yellow',
+]);
+
+function strictMatchTopSavings(dealTitle: string, ingredientName: string): boolean {
+  const dealTokens = normalizeTokens(dealTitle).filter((token) => token.length > 2);
+  const ingredientTokens = normalizeTokens(ingredientName).filter((token) => token.length > 2);
+  if (dealTokens.length === 0 || ingredientTokens.length === 0) {
+    return false;
+  }
+  const ingredientSet = new Set(ingredientTokens);
+  for (const token of ingredientTokens) {
+    if (!dealTokens.includes(token)) {
+      return false;
+    }
+  }
+  const extras = dealTokens.filter((token) => !ingredientSet.has(token));
+  if (extras.length > 2) {
+    return false;
+  }
+  return extras.every((token) => TOP_SAVINGS_ALLOWED_TOKENS.has(token));
+}
 
 const fallbackImage =
   'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=800&q=80';
@@ -214,7 +256,8 @@ function formatScaledQuantity(
 
 export default function PlanScreen() {
   const recipes = useRecipes();
-  const { postalCode, dietaryPreferences, householdSize, favoriteStores } = usePreferencesStore();
+  const { postalCode, dietaryPreferences, allergies, householdSize, favoriteStores } =
+    usePreferencesStore();
   const dealsQuery = useDeals({ postalCode });
   const filteredDeals = useMemo(
     () => (dealsQuery.data ?? []).filter((deal) => !shouldIgnoreStore(deal.store)),
@@ -225,6 +268,7 @@ export default function PlanScreen() {
     mealsRequested,
     maxCookTimeMins,
     servings,
+    isGeneratingPlan,
     cuisineThemes,
     aiPrompt,
     aiRecipes,
@@ -235,17 +279,19 @@ export default function PlanScreen() {
     setMealsRequested,
     setMaxCookTimeMins,
     setServings,
+    setIsGeneratingPlan,
     setCuisineThemes,
     setAiPrompt,
     setAiRecipes,
     setPlan,
   } = useMealPlanStore();
 
-  const [maxCookInput, setMaxCookInput] = useState(maxCookTimeMins ? String(maxCookTimeMins) : '');
-  const [servingsInput, setServingsInput] = useState(servings ? String(servings) : '');
+  const [maxCookInput, setMaxCookInput] = useState('');
+  const [maxCookTouched, setMaxCookTouched] = useState(false);
+  const [servingsInput, setServingsInput] = useState('');
+  const [servingsTouched, setServingsTouched] = useState(false);
   const [error, setError] = useState('');
   const [info, setInfo] = useState('');
-  const [isGeneratingPlan, setIsGeneratingPlan] = useState(false);
   const [generatingMode, setGeneratingMode] = useState<'update' | 'full' | null>(null);
   const canUpdatePlan = (plan?.recipes.length ?? 0) < mealsRequested;
   const [undoState, setUndoState] = useState<{
@@ -271,15 +317,18 @@ export default function PlanScreen() {
   );
 
   useEffect(() => {
-    if (servings === undefined && householdSize) {
-      setServings(householdSize);
-      setServingsInput(String(householdSize));
+    if (servingsTouched || maxCookTouched) {
       return;
     }
-    if (!servingsInput && servings) {
-      setServingsInput(String(servings));
+    if (servings === undefined) {
+      const defaultServings = householdSize || 2;
+      setServings(defaultServings);
+      if (householdSize) {
+        setServingsInput(String(defaultServings));
+      }
+      return;
     }
-  }, [servings, servingsInput, householdSize, setServings]);
+  }, [servings, householdSize, setServings, servingsTouched, maxCookTouched]);
 
   const effectiveServings = servings && servings > 0 ? servings : undefined;
   const recentRecipeIds = useMemo(() => {
@@ -316,12 +365,14 @@ export default function PlanScreen() {
 
   const handleMaxCookChange = (value: string) => {
     setMaxCookInput(value);
+    setMaxCookTouched(true);
     const parsed = Number.parseInt(value, 10);
     setMaxCookTimeMins(Number.isFinite(parsed) ? parsed : undefined);
   };
 
   const handleServingsChange = (value: string) => {
     setServingsInput(value);
+    setServingsTouched(true);
     const parsed = Number.parseInt(value, 10);
     setServings(Number.isFinite(parsed) ? parsed : undefined);
   };
@@ -390,6 +441,10 @@ export default function PlanScreen() {
           prompt: aiPrompt.trim(),
           cuisines: selectedCuisines,
           count: mealsRequested,
+          servings,
+          maxCookTimeMins,
+          dietaryPreferences,
+          allergies,
         });
         if (generated.length === 0) {
           setError('No recipes matched that cooking vibe. Try another prompt.');
@@ -462,41 +517,65 @@ export default function PlanScreen() {
     refreshGroceryList(plan);
   }, [plan, refreshGroceryList]);
 
-  const topDeals = useMemo(() => {
+  const topSavings = useMemo(() => {
     if (!plan) {
-      return [];
+      return { deals: [], store: undefined as string | undefined };
     }
     const allDeals = filteredDeals ?? [];
-    const ingredientNames = plan.recipes.flatMap((recipe) =>
-      recipe.ingredients.map((ingredient) => ingredient.name)
-    );
-    const matches = allDeals.filter((deal) =>
-      ingredientNames.some((name) => matchDealToIngredient(deal, name))
-    );
-    const storeCounts = new Map<string, { priced: number; total: number }>();
-    matches.forEach((deal) => {
-      const entry = storeCounts.get(deal.store) ?? { priced: 0, total: 0 };
-      if (typeof deal.price === 'number' && Number.isFinite(deal.price)) {
-        entry.priced += 1;
+    const ingredientEntries = plan.recipes
+      .flatMap((recipe) => recipe.ingredients)
+      .map((ingredient) => ({
+        name: ingredient.name?.trim() ?? '',
+        category: ingredient.category?.toLowerCase() ?? '',
+      }))
+      .filter((ingredient) => ingredient.name);
+    const uniqueIngredientKeys = new Set<string>();
+    const ingredientList = ingredientEntries.filter((ingredient) => {
+      const key = `${ingredient.name.toLowerCase()}::${ingredient.category}`;
+      if (uniqueIngredientKeys.has(key)) {
+        return false;
       }
-      entry.total += 1;
-      storeCounts.set(deal.store, entry);
+      uniqueIngredientKeys.add(key);
+      return true;
     });
-    let fallbackStore = plan.selectedStore;
-    if (!fallbackStore && storeCounts.size > 0) {
+    const storeCounts = new Map<string, { priced: number; total: number; protein: number }>();
+    ingredientList.forEach((ingredient) => {
+      const isProtein = ['meat', 'seafood', 'protein'].includes(ingredient.category);
+      const matches = allDeals.filter(
+        (deal) =>
+          matchDealToIngredient(deal, ingredient.name) &&
+          strictMatchTopSavings(deal.title, ingredient.name)
+      );
+      matches.forEach((deal) => {
+        const entry = storeCounts.get(deal.store) ?? { priced: 0, total: 0, protein: 0 };
+        if (typeof deal.price === 'number' && Number.isFinite(deal.price)) {
+          entry.priced += 1;
+        }
+        entry.total += 1;
+        if (isProtein) {
+          entry.protein += 1;
+        }
+        storeCounts.set(deal.store, entry);
+      });
+    });
+    let fallbackStore: string | undefined;
+    if (storeCounts.size > 0) {
       const sortedStores = Array.from(storeCounts.entries()).sort((a, b) => {
-        const aScore = a[1].priced * 10 + a[1].total;
-        const bScore = b[1].priced * 10 + b[1].total;
-        return bScore - aScore;
+        const proteinDiff = b[1].protein - a[1].protein;
+        if (proteinDiff !== 0) {
+          return proteinDiff;
+        }
+        const totalDiff = b[1].total - a[1].total;
+        if (totalDiff !== 0) {
+          return totalDiff;
+        }
+        return b[1].priced - a[1].priced;
       });
       fallbackStore = sortedStores[0][0];
     }
     const scopedDeals = fallbackStore
       ? allDeals.filter((deal) => deal.store === fallbackStore)
       : allDeals;
-    const scopedMatches = scopedDeals.filter((deal) =>
-      ingredientNames.some((name) => matchDealToIngredient(deal, name))
-    );
     const pantryStaples = [
       'soy sauce',
       'hoisin sauce',
@@ -526,7 +605,7 @@ export default function PlanScreen() {
       'mayo',
       'mayonnaise',
     ];
-    const filteredMatches = scopedMatches.filter((deal) => {
+    const filteredMatches = scopedDeals.filter((deal) => {
       const category = deal.category?.toLowerCase() ?? '';
       const title = deal.title.toLowerCase();
       if (pantryStaples.some((staple) => title.includes(staple))) {
@@ -537,8 +616,38 @@ export default function PlanScreen() {
       }
       return true;
     });
-    return filteredMatches
+    const sortedIngredients = [...ingredientList].sort((a, b) => {
+      const aProtein = ['meat', 'seafood', 'protein'].includes(a.category);
+      const bProtein = ['meat', 'seafood', 'protein'].includes(b.category);
+      if (aProtein !== bProtein) {
+        return aProtein ? -1 : 1;
+      }
+      return a.name.localeCompare(b.name);
+    });
+    const ingredientMatches = sortedIngredients
+      .map((ingredient) =>
+        filteredMatches.find(
+          (deal) =>
+            matchDealToIngredient(deal, ingredient.name) &&
+            strictMatchTopSavings(deal.title, ingredient.name)
+        )
+      )
+      .filter((deal): deal is DealItem => Boolean(deal));
+    const uniqueMatches = new Map<string, DealItem>();
+    ingredientMatches.forEach((deal) => {
+      if (!uniqueMatches.has(deal.id)) {
+        uniqueMatches.set(deal.id, deal);
+      }
+    });
+    const deals = Array.from(uniqueMatches.values())
       .sort((a, b) => {
+        const aCategory = a.category?.toLowerCase() ?? '';
+        const bCategory = b.category?.toLowerCase() ?? '';
+        const isAProtein = ['meat', 'seafood', 'protein'].includes(aCategory);
+        const isBProtein = ['meat', 'seafood', 'protein'].includes(bCategory);
+        if (isAProtein !== isBProtein) {
+          return isAProtein ? -1 : 1;
+        }
         const aPrice = Number.isFinite(a.price as number) ? (a.price as number) : null;
         const bPrice = Number.isFinite(b.price as number) ? (b.price as number) : null;
         if (aPrice === null && bPrice === null) {
@@ -556,6 +665,7 @@ export default function PlanScreen() {
         return a.title.localeCompare(b.title);
       })
       .slice(0, 5);
+    return { deals, store: deals.length > 0 ? fallbackStore : undefined };
   }, [plan, filteredDeals]);
 
   const renderTopDealTitle = (title: string) => {
@@ -632,12 +742,7 @@ export default function PlanScreen() {
       <View style={styles.headerBar}>
         <View style={styles.headerRow}>
           <View style={styles.logoTitleRow}>
-          <Image
-            source={require('../../assets/logos/app-logo/forkcast-logo-transparent.png')}
-            style={styles.headerLogo}
-            contentFit="contain"
-            tintColor="#1F1F1F"
-          />
+            <LogoWithShimmer isActive={isGeneratingPlan} tintColor="#1F1F1F" size={32} />
             <View>
               <Text style={styles.headerTitle}>Plan</Text>
             </View>
@@ -689,7 +794,7 @@ export default function PlanScreen() {
               value={servingsInput}
               onChangeText={handleServingsChange}
               keyboardType="number-pad"
-              placeholder="2"
+              placeholder={householdSize ? String(householdSize) : '2'}
               textColor="#5F6368"
               placeholderTextColor="#B0B6BC"
             />
@@ -757,13 +862,13 @@ export default function PlanScreen() {
       {plan && (
         <View style={styles.topDealsBar}>
           <Text style={styles.sectionTitle}>Top Savings This Week</Text>
-          {plan.selectedStore ? (
+          {topSavings.store ? (
             <Text style={styles.planStore}>
-              Go-to store: <Text style={styles.planStoreStrong}>{getStoreDisplayName(plan.selectedStore)}</Text>
+              Go-to store: <Text style={styles.planStoreStrong}>{getStoreDisplayName(topSavings.store)}</Text>
             </Text>
           ) : null}
-          {topDeals.length > 0 ? (
-            topDeals.map((deal) => {
+          {topSavings.deals.length > 0 ? (
+            topSavings.deals.map((deal) => {
               const priceAvailable = typeof deal.price === 'number' && Number.isFinite(deal.price);
               const priceText = priceAvailable
                 ? `CAD ${deal.price!.toFixed(2)} / ${deal.unit}`
@@ -1122,10 +1227,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-  },
-  headerLogo: {
-    width: 32,
-    height: 32,
   },
   headerTitle: {
     fontSize: 20,

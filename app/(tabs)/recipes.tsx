@@ -6,6 +6,7 @@ import { Card, IconButton, Snackbar, TextInput, Button } from 'react-native-pape
 import { router } from 'expo-router';
 
 import { PatternBackground } from '@/components/pattern-background';
+import { LogoWithShimmer } from '@/components/logo-with-shimmer';
 import { useRemoteImage } from '@/src/hooks/useRemoteImage';
 import { useMealPlanStore } from '@/src/state/useMealPlanStore';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -15,7 +16,8 @@ const fallbackImage =
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 export default function RecipesScreen() {
-  const { recipeHistory, removeHistoryRecipe, restoreHistoryRecipe } = useMealPlanStore();
+  const { recipeHistory, removeHistoryRecipe, restoreHistoryRecipe, isGeneratingPlan } =
+    useMealPlanStore();
   const [undoVisible, setUndoVisible] = useState(false);
   const [undoState, setUndoState] = useState<{
     recipe?: { id: string; title: string; imageUrl?: string | null; cookTimeMins: number; servings: number };
@@ -114,12 +116,7 @@ export default function RecipesScreen() {
       <View style={styles.headerBar}>
         <View style={styles.headerRow}>
           <View style={styles.logoTitleRow}>
-            <Image
-              source={require('../../assets/logos/app-logo/forkcast-logo-transparent.png')}
-              style={styles.headerLogo}
-              contentFit="contain"
-              tintColor="#1F1F1F"
-            />
+            <LogoWithShimmer isActive={isGeneratingPlan} tintColor="#1F1F1F" size={32} />
             <View>
               <Text style={styles.headerTitle}>Recipes</Text>
             </View>
@@ -337,10 +334,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-  },
-  headerLogo: {
-    width: 32,
-    height: 32,
   },
   headerTitle: {
     fontSize: 20,
