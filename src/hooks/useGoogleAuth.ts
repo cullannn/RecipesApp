@@ -10,6 +10,14 @@ const GOOGLE_WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ?? '';
 const GOOGLE_IOS_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID ?? '';
 const GOOGLE_ANDROID_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID ?? '';
 
+function maskClientId(value: string) {
+  if (!value) {
+    return '';
+  }
+  const tail = value.slice(-10);
+  return `***${tail}`;
+}
+
 async function fetchGoogleProfile(accessToken: string) {
   const response = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
     headers: {
@@ -26,6 +34,14 @@ export function useGoogleAuth() {
   const { userId, name, email, photoUrl, setUser, clearUser } = useAuthStore();
   const [authError, setAuthError] = useState('');
   const [signingIn, setSigningIn] = useState(false);
+
+  useEffect(() => {
+    console.log(
+      `[auth] google client ids web=${maskClientId(GOOGLE_WEB_CLIENT_ID)} ios=${maskClientId(
+        GOOGLE_IOS_CLIENT_ID
+      )} android=${maskClientId(GOOGLE_ANDROID_CLIENT_ID)}`
+    );
+  }, []);
   const [request, response, promptAsync] = Google.useAuthRequest({
     webClientId: GOOGLE_WEB_CLIENT_ID,
     iosClientId: GOOGLE_IOS_CLIENT_ID,
