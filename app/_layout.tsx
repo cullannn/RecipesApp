@@ -1,9 +1,10 @@
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Stack } from 'expo-router';
+import { Stack, router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
-import { Text } from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Pressable, StyleSheet } from 'react-native';
 import { MD3LightTheme, PaperProvider } from 'react-native-paper';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import {
@@ -30,7 +31,7 @@ const materialTheme = {
     primary: '#1A73E8',
     secondary: '#D2E3FC',
     surface: '#FFFFFF',
-    background: '#F7F8FA',
+    background: '#B6DCC6',
     outline: '#E0E0E0',
   },
   fonts: {
@@ -123,17 +124,39 @@ export default function RootLayout() {
                 name="recipe/[id]"
                 options={{
                   title: 'Recipe',
-                  headerBackTitle: 'Back',
                   headerStyle: { backgroundColor: '#FFFFFF' },
                   headerTintColor: '#1F1F1F',
+                  headerBackVisible: false,
+                  headerBackTitleVisible: false,
+                  headerBackButtonMenuEnabled: false,
+                  headerLeftContainerStyle: styles.backButtonContainer,
+                  headerLeft: () => (
+                    <Pressable
+                      onPress={() => router.back()}
+                      style={styles.backButton}
+                      android_ripple={{ color: 'transparent' }}>
+                      <MaterialCommunityIcons name="arrow-left" size={22} color="#1B7F3A" />
+                    </Pressable>
+                  ),
                 }}
               />
               <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
             </Stack>
-            <StatusBar style="auto" />
+            <StatusBar style="dark" />
           </ThemeProvider>
         </SafeAreaProvider>
       </PaperProvider>
     </QueryClientProvider>
   );
 }
+
+const styles = StyleSheet.create({
+  backButtonContainer: {
+    backgroundColor: 'transparent',
+    paddingLeft: 12,
+  },
+  backButton: {
+    paddingHorizontal: 6,
+    paddingVertical: 6,
+  },
+});

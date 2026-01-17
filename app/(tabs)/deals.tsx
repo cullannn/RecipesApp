@@ -1,7 +1,22 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState, useTransition } from 'react';
-import { Animated, Easing, Modal, Pressable, ScrollView, SectionList, StyleSheet, Text, View, Image as RNImage } from 'react-native';
+import {
+  Animated,
+  Easing,
+  LayoutAnimation,
+  Modal,
+  Platform,
+  Pressable,
+  ScrollView,
+  SectionList,
+  StyleSheet,
+  Text,
+  UIManager,
+  View,
+  Image as RNImage,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Card, TextInput, Button } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
@@ -33,11 +48,25 @@ const FilterItem = memo(function FilterItem({
   iconName?: keyof typeof MaterialCommunityIcons.glyphMap;
   imageSource?: number | string;
 }) {
+  const scale = useRef(new Animated.Value(1)).current;
+  const animateScale = useCallback(
+    (value: number) => {
+      Animated.timing(scale, {
+        toValue: value,
+        duration: 120,
+        easing: Easing.out(Easing.quad),
+        useNativeDriver: true,
+      }).start();
+    },
+    [scale]
+  );
   const logoSource = typeof imageSource === 'string' ? { uri: imageSource } : imageSource;
   return (
-    <Pressable
+    <AnimatedPressable
       onPress={onPress}
-      style={[styles.filterItem, selected && styles.filterItemSelected]}>
+      onPressIn={() => animateScale(0.94)}
+      onPressOut={() => animateScale(1)}
+      style={[styles.filterItem, selected && styles.filterItemSelected, { transform: [{ scale }] }]}>
       {imageSource ? (
         <View style={styles.filterLogoWrap}>
           <RNImage source={logoSource} style={styles.filterLogo} resizeMode="contain" />
@@ -50,7 +79,7 @@ const FilterItem = memo(function FilterItem({
         </View>
       )}
       <Text style={[styles.filterText, selected && styles.filterTextSelected]}>{label}</Text>
-    </Pressable>
+    </AnimatedPressable>
   );
 });
 
@@ -117,9 +146,10 @@ const DealCard = memo(function DealCard({
       onPress={onPress}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}>
-      <Card style={styles.card}>
-        <View style={styles.cardClip}>
-          <View style={styles.cardRow}>
+      <View style={styles.cardWrap}>
+        <Card mode="contained" style={styles.card}>
+          <View style={styles.cardClip}>
+            <View style={styles.cardRow}>
             <View style={styles.thumbWrap}>
               <Image
                 key={imageUrl ?? fallbackImage}
@@ -154,9 +184,17 @@ const DealCard = memo(function DealCard({
                 <Text style={styles.cardSavings}>Save {savingsPercent}%</Text>
               ) : null}
             </View>
+            </View>
+            <LinearGradient
+              pointerEvents="none"
+              colors={['rgba(27, 127, 58, 0.35)', 'rgba(27, 127, 58, 0)']}
+              start={{ x: 0.5, y: 1 }}
+              end={{ x: 0.5, y: 0 }}
+              style={styles.cardBottomShade}
+            />
           </View>
-        </View>
-      </Card>
+        </Card>
+      </View>
     </AnimatedPressable>
   );
 });
@@ -407,6 +445,12 @@ export default function DealsScreen() {
   );
 
   useEffect(() => {
+    if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+      UIManager.setLayoutAnimationEnabledExperimental(true);
+    }
+  }, []);
+
+  useEffect(() => {
     groupedDeals.forEach((group) => {
       if (!chevronAnims.current.has(group.key)) {
         chevronAnims.current.set(
@@ -418,6 +462,20 @@ export default function DealsScreen() {
   }, [groupedDeals, collapsedGroups]);
 
   const toggleGroup = useCallback((key: string) => {
+    LayoutAnimation.configureNext({
+      duration: 220,
+      update: {
+        type: LayoutAnimation.Types.easeInEaseOut,
+      },
+      create: {
+        type: LayoutAnimation.Types.easeInEaseOut,
+        property: LayoutAnimation.Properties.scaleY,
+      },
+      delete: {
+        type: LayoutAnimation.Types.easeInEaseOut,
+        property: LayoutAnimation.Properties.scaleY,
+      },
+    });
     setCollapsedGroups((prev) => {
       const next = new Set(prev);
       const isCollapsed = next.has(key);
@@ -487,7 +545,9 @@ export default function DealsScreen() {
       const displayStoreName = getStoreDisplayName(section.store);
       return (
         <View style={[styles.groupHeaderCard, isCollapsed && styles.groupHeaderCollapsed]}>
-          <Pressable onPress={() => toggleGroup(section.key)} style={styles.groupHeader}>
+          <Pressable
+            onPress={() => toggleGroup(section.key)}
+            style={[styles.groupHeader, isCollapsed && styles.groupHeaderCollapsedLine]}>
             <View style={styles.groupHeaderRow}>
               {resolveStoreLogo(section.store) ? (
                 <RNImage
@@ -667,6 +727,11 @@ export default function DealsScreen() {
               removeClippedSubviews
               stickySectionHeadersEnabled={false}
             />
+            {dealsQuery.isFetching && sections.length > 0 ? (
+              <View style={styles.loadingOverlay}>
+                <LoadingDealsSplash />
+              </View>
+            ) : null}
           </View>
         </>
       )}
@@ -845,6 +910,12 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#7A8086',
   },
+  loadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(255, 255, 255, 0.86)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   sectionTitle: {
     fontSize: 13,
     fontWeight: '600',
@@ -905,11 +976,6 @@ const styles = StyleSheet.create({
     borderColor: '#E6E9EF',
     overflow: 'hidden',
     borderBottomWidth: 0,
-    shadowColor: '#0f172a',
-    shadowOpacity: 0.06,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 3,
   },
   groupHeaderCollapsed: {
     borderBottomLeftRadius: 18,
@@ -918,12 +984,15 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   groupHeader: {
-    backgroundColor: '#D8EFDF',
+    backgroundColor: '#FFFFFF',
     paddingHorizontal: 14,
     paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#CFE8D7',
+    borderBottomWidth: 2,
+    borderBottomColor: '#1B7F3A',
     alignItems: 'center',
+  },
+  groupHeaderCollapsedLine: {
+    borderBottomWidth: 0,
   },
   groupHeaderRow: {
     flexDirection: 'row',
@@ -946,16 +1015,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#0f172a',
-    shadowOpacity: 0.12,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
   },
   groupTitle: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#1F1F1F',
+    color: '#1B7F3A',
   },
   groupBody: {
     padding: 12,
@@ -978,29 +1042,38 @@ const styles = StyleSheet.create({
     borderColor: '#E6E9EF',
     paddingBottom: 8,
     marginBottom: 12,
-    shadowColor: '#0f172a',
-    shadowOpacity: 0.06,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 3,
   },
   listWrapper: {
     flex: 1,
-    backgroundColor: '#D9DEE6',
+    backgroundColor: '#B6DCC6',
   },
   listSurface: {
     backgroundColor: 'transparent',
   },
   card: {
-    marginBottom: 6,
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#E6E9EF',
+    borderColor: '#BFE7CB',
+    elevation: 0,
+    shadowColor: 'transparent',
+    shadowOpacity: 0,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 0 },
+  },
+  cardWrap: {
+    position: 'relative',
+    marginBottom: 4,
+  },
+  cardBottomShade: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: 4,
   },
   cardPressable: {
     borderRadius: 16,
-    overflow: 'hidden',
   },
   cardClip: {
     borderRadius: 16,

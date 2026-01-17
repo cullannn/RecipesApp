@@ -2,6 +2,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, Easing, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Button, Card, Chip, IconButton, Snackbar, TextInput } from 'react-native-paper';
 import { router } from 'expo-router';
 
@@ -183,7 +184,7 @@ const RecipeCard = memo(function RecipeCard({
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
       accessibilityRole="button">
-      <Card style={styles.planCard}>
+      <Card mode="contained" style={styles.planCard}>
         <View style={styles.planCardClip}>
           <View style={styles.coverWrap}>
             <Image
@@ -235,6 +236,13 @@ const RecipeCard = memo(function RecipeCard({
               );
             })}
           </Card.Content>
+          <LinearGradient
+            pointerEvents="none"
+            colors={['rgba(27, 127, 58, 0.35)', 'rgba(27, 127, 58, 0)']}
+            start={{ x: 0.5, y: 1 }}
+            end={{ x: 0.5, y: 0 }}
+            style={styles.planCardBottomShade}
+          />
         </View>
       </Card>
     </AnimatedPressable>
@@ -919,7 +927,8 @@ export default function PlanScreen() {
         <View style={styles.planBlock}>
           <Text style={styles.sectionTitle}>Grocery List</Text>
           {groceryItems.length ? (
-            groceryItems.map((item) => {
+            groceryItems.map((item, index) => {
+              const isLast = index === groceryItems.length - 1;
               const dealStore = item.matchedDeal?.store;
               const dealStoreLabel = dealStore ? getStoreDisplayName(dealStore) : null;
               const dealPrice = typeof item.matchedDeal?.price === 'number' ? `$${item.matchedDeal!.price.toFixed(2)}` : null;
@@ -931,7 +940,10 @@ export default function PlanScreen() {
                     ? ` • ${planStoreLabel}`
                     : '';
               return (
-                <Pressable key={item.id} style={styles.groceryRow} onPress={() => toggleChecked(item.id)}>
+                <Pressable
+                  key={item.id}
+                  style={[styles.groceryRow, isLast && styles.groceryRowLast]}
+                  onPress={() => toggleChecked(item.id)}>
                   <View style={[styles.checkboxBox, item.checked && styles.checkboxBoxChecked]}>
                     {item.checked ? <Text style={styles.checkboxMark}>X</Text> : null}
                   </View>
@@ -993,7 +1005,7 @@ const styles = StyleSheet.create({
   },
   contentSurface: {
     flex: 1,
-    backgroundColor: '#D9DEE6',
+    backgroundColor: '#B6DCC6',
   },
   scrollSurface: {
     backgroundColor: 'transparent',
@@ -1152,16 +1164,17 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#E6E9EF',
-    shadowColor: '#0f172a',
-    shadowOpacity: 0.14,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 10 },
-    elevation: 6,
+    borderColor: '#BFE7CB',
+    shadowColor: 'transparent',
+    shadowOpacity: 0,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 0,
   },
   planCardClip: {
     borderRadius: 16,
     overflow: 'hidden',
+    position: 'relative',
   },
   planCardPressable: {
     borderRadius: 16,
@@ -1223,6 +1236,13 @@ const styles = StyleSheet.create({
     marginBottom: 4,
     color: '#1F1F1F',
   },
+  planCardBottomShade: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: 4,
+  },
   logoTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1239,6 +1259,9 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderBottomWidth: 1,
     borderBottomColor: '#E0E0E0',
+  },
+  groceryRowLast: {
+    borderBottomWidth: 0,
   },
   groceryText: {
     flex: 1,

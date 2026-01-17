@@ -2,6 +2,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, Easing, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Card, IconButton, Snackbar, TextInput, Button } from 'react-native-paper';
 import { router } from 'expo-router';
 
@@ -269,7 +270,7 @@ const RecipeListItem = memo(function RecipeListItem({
       onPressIn={() => animateScale(0.96)}
       onPressOut={() => animateScale(1)}
       accessibilityRole="button">
-      <Card style={styles.card}>
+      <Card mode="contained" style={styles.card}>
         <View style={styles.cardClip}>
           <View style={styles.coverWrap}>
             <Image
@@ -308,6 +309,13 @@ const RecipeListItem = memo(function RecipeListItem({
               />
             </View>
           </Card.Content>
+          <LinearGradient
+            pointerEvents="none"
+            colors={['rgba(27, 127, 58, 0.35)', 'rgba(27, 127, 58, 0)']}
+            start={{ x: 0.5, y: 1 }}
+            end={{ x: 0.5, y: 0 }}
+            style={styles.cardBottomShade}
+          />
         </View>
       </Card>
     </AnimatedPressable>
@@ -342,7 +350,7 @@ const styles = StyleSheet.create({
   },
   contentSurface: {
     flex: 1,
-    backgroundColor: '#D9DEE6',
+    backgroundColor: '#B6DCC6',
   },
   searchButton: {
     width: 32,
@@ -364,6 +372,7 @@ const styles = StyleSheet.create({
   },
   list: {
     paddingHorizontal: 16,
+    paddingTop: 4,
     paddingBottom: 24,
   },
   sectionBlock: {
@@ -378,13 +387,15 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#1F1F1F',
+    color: '#1B7F3A',
     textAlign: 'center',
   },
   sectionHeader: {
-    backgroundColor: '#D8EFDF',
+    backgroundColor: '#FFFFFF',
     paddingVertical: 8,
     paddingHorizontal: 12,
+    borderBottomWidth: 2,
+    borderBottomColor: '#1B7F3A',
   },
   sectionBody: {
     paddingHorizontal: 12,
@@ -402,12 +413,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#E6E9EF',
-    shadowColor: '#0f172a',
-    shadowOpacity: 0.14,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 10 },
-    elevation: 6,
+    borderColor: '#BFE7CB',
+    shadowColor: 'transparent',
+    shadowOpacity: 0,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 0,
   },
   cardPressable: {
     borderRadius: 16,
@@ -416,6 +427,7 @@ const styles = StyleSheet.create({
   cardClip: {
     borderRadius: 16,
     overflow: 'hidden',
+    position: 'relative',
   },
   coverWrap: {
     position: 'relative',
@@ -460,15 +472,22 @@ const styles = StyleSheet.create({
     padding: 0,
     width: 32,
     alignItems: 'flex-end',
-    shadowColor: '#1B7F3A',
-    shadowOpacity: 0.35,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 4,
+    shadowColor: 'transparent',
+    shadowOpacity: 0,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 0,
   },
   cardMeta: {
     fontSize: 12,
     color: '#5F6368',
+  },
+  cardBottomShade: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: 4,
   },
   searchModalBackdrop: {
     flex: 1,

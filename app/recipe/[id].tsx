@@ -101,7 +101,7 @@ export default function RecipeDetailScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F7F8FA',
+    backgroundColor: '#B6DCC6',
   },
   content: {
     padding: 16,

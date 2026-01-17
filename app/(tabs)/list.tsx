@@ -201,7 +201,7 @@ const styles = StyleSheet.create({
   },
   contentSurface: {
     flex: 1,
-    backgroundColor: '#D9DEE6',
+    backgroundColor: '#B6DCC6',
   },
   title: {
     fontSize: 20,

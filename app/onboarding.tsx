@@ -218,11 +218,14 @@ const styles = StyleSheet.create({
   },
   contentSurface: {
     flex: 1,
-    backgroundColor: '#D9DEE6',
-    padding: 16,
+    backgroundColor: '#B6DCC6',
+    paddingHorizontal: 16,
+    paddingTop: 0,
+    paddingBottom: 0,
   },
   container: {
-    paddingBottom: 24,
+    paddingTop: 16,
+    paddingBottom: 16,
   },
   card: {
     backgroundColor: '#FFFFFF',
