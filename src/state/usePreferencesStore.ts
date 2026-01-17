@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { createUserScopedStorage } from './storage';
+import { useAuthStore } from './useAuthStore';
 
 type PreferencesState = {
   postalCode: string;
@@ -43,6 +44,9 @@ export const usePreferencesStore = create<PreferencesState>()(
           };
         }),
     }),
-    { name: 'dealchef-preferences', storage: createUserScopedStorage() }
+    {
+      name: 'dealchef-preferences',
+      storage: createUserScopedStorage(() => useAuthStore.getState().userId),
+    }
   )
 );

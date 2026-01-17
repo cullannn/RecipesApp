@@ -11,6 +11,7 @@ import { useGroceryListStore } from '@/src/state/useGroceryListStore';
 import { useMealPlanStore } from '@/src/state/useMealPlanStore';
 import { usePreferencesStore } from '@/src/state/usePreferencesStore';
 import { getCategorySection } from '@/src/utils/categories';
+import { getStoreDisplayName } from '@/src/utils/storeLogos';
 
 const categoryOrder = ['Produce', 'Meat', 'Dairy', 'Pantry', 'Frozen', 'Other'];
 
@@ -94,7 +95,7 @@ export default function GroceryListScreen() {
     }
     const lines = items.map((item) => {
       const dealText = item.matchedDeal
-        ? ` (${item.matchedDeal.store} $${item.matchedDeal.price.toFixed(2)})`
+        ? ` (${getStoreDisplayName(item.matchedDeal.store)} $${item.matchedDeal.price.toFixed(2)})`
         : '';
       return `${item.checked ? '[x]' : '[ ]'} ${item.name} - ${item.totalQuantity}${dealText}`;
     });
@@ -129,7 +130,7 @@ export default function GroceryListScreen() {
         <PatternBackground />
         <GradientTitle text="List" style={styles.title} />
         {plan.selectedStore ? (
-          <Text style={styles.storeNote}>Shop at {plan.selectedStore}</Text>
+          <Text style={styles.storeNote}>Shop at {getStoreDisplayName(plan.selectedStore)}</Text>
         ) : null}
         <View style={styles.controlsRow}>
           <View style={styles.switchRow}>
@@ -156,26 +157,36 @@ export default function GroceryListScreen() {
             </Text>
           }
           renderSectionHeader={({ section }) => (
-            <Text style={styles.sectionHeader}>{section.title}</Text>
+            <Text style={styles.sectionHeader}>
+              {sortByStore ? getStoreDisplayName(section.title) : section.title}
+            </Text>
           )}
-          renderItem={({ item }) => (
-            <Pressable style={styles.itemRow} onPress={() => toggleChecked(item.id)}>
-              <Checkbox status={item.checked ? 'checked' : 'unchecked'} />
-              <View style={styles.itemText}>
-                <Text style={[styles.itemName, item.checked && styles.itemChecked]}>
-                  {item.name}
-                </Text>
-                <Text style={styles.itemMeta}>
-                  Buy: {item.totalQuantity}
-                  {item.matchedDeal
-                    ? ` • ${item.matchedDeal.store} $${item.matchedDeal.price.toFixed(2)}`
-                    : plan.selectedStore
-                      ? ` • ${plan.selectedStore}`
-                      : ''}
-                </Text>
-              </View>
-            </Pressable>
-          )}
+          renderItem={({ item }) => {
+            const matchedDealStoreLabel = item.matchedDeal
+              ? getStoreDisplayName(item.matchedDeal.store)
+              : null;
+            const planStoreLabel = plan.selectedStore ? getStoreDisplayName(plan.selectedStore) : null;
+            const storeMeta =
+              item.matchedDeal && matchedDealStoreLabel
+                ? ` • ${matchedDealStoreLabel} $${item.matchedDeal.price.toFixed(2)}`
+                : planStoreLabel
+                  ? ` • ${planStoreLabel}`
+                  : '';
+            return (
+              <Pressable style={styles.itemRow} onPress={() => toggleChecked(item.id)}>
+                <Checkbox status={item.checked ? 'checked' : 'unchecked'} />
+                <View style={styles.itemText}>
+                  <Text style={[styles.itemName, item.checked && styles.itemChecked]}>
+                    {item.name}
+                  </Text>
+                  <Text style={styles.itemMeta}>
+                    Buy: {item.totalQuantity}
+                    {storeMeta}
+                  </Text>
+                </View>
+              </Pressable>
+            );
+          }}
         />
       </View>
     </SafeAreaView>

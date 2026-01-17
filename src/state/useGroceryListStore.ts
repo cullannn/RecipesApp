@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { GroceryListItem } from '@/src/types';
 import { createUserScopedStorage } from './storage';
+import { useAuthStore } from './useAuthStore';
 
 type GroceryListState = {
   items: GroceryListItem[];
@@ -28,6 +29,9 @@ export const useGroceryListStore = create<GroceryListState>()(
         set({ items });
       },
     }),
-    { name: 'dealchef-grocery-list', storage: createUserScopedStorage() }
+    {
+      name: 'dealchef-grocery-list',
+      storage: createUserScopedStorage(() => useAuthStore.getState().userId),
+    }
   )
 );

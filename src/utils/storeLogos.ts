@@ -17,6 +17,7 @@ const storeLogoMap: Record<string, number | string> = {
   'h mart': require('../../assets/logos/official/h-mart.png'),
   'bestco food mart': require('../../assets/logos/official/bestco-food-mart.png'),
   'foody mart': require('../../assets/logos/official/foody-mart.png'),
+  foody: require('../../assets/logos/official/foody-mart.png'),
   't t supermarket': require('../../assets/logos/official/tnt.png'),
   ttsupermarket: require('../../assets/logos/official/tnt.png'),
   't t': require('../../assets/logos/official/tnt.png'),
@@ -24,6 +25,35 @@ const storeLogoMap: Record<string, number | string> = {
 
 export const normalizeStoreName = (store: string) =>
   store.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+
+const storeDisplayNameMap: Record<string, string> = {
+  't t supermarket': 'T&T',
+  'bestco food mart': 'Bestco',
+  'galleria supermarket': 'Galleria',
+  'real canadian superstore': 'RCSS',
+  'sunny supermarket': 'Sunny',
+  'winco food mart': 'WinCo',
+  'foody mart': 'Foody',
+  foody: 'Foody',
+};
+
+const ignoreKeywords = ['wok'];
+
+export const shouldIgnoreStore = (store: string) => {
+  const normalized = normalizeStoreName(store);
+  if (!normalized) {
+    return false;
+  }
+  return ignoreKeywords.some((keyword) => normalized.includes(keyword));
+};
+
+export const getStoreDisplayName = (store: string) => {
+  if (!store) {
+    return store;
+  }
+  const normalized = normalizeStoreName(store);
+  return storeDisplayNameMap[normalized] ?? store;
+};
 
 export const resolveStoreLogo = (store: string) => {
   const normalized = normalizeStoreName(store);

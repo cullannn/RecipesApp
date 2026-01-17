@@ -4,7 +4,6 @@ import { router } from 'expo-router';
 import { Button } from 'react-native-paper';
 
 import { PatternBackground } from '@/components/pattern-background';
-import { GradientTitle } from '@/components/gradient-title';
 import { usePreferencesStore } from '@/src/state/usePreferencesStore';
 import { formatPostalCode } from '@/src/utils/postalCode';
 import { resolveStoreLogo } from '@/src/utils/storeLogos';
@@ -24,7 +23,19 @@ export default function SettingsScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <View style={styles.headerBar}>
-        <GradientTitle text="Settings" style={styles.title} />
+        <View style={styles.headerRow}>
+          <View style={styles.logoTitleRow}>
+            <Image
+              source={require('../../assets/logos/app-logo/forkcast-logo-transparent.png')}
+              style={styles.headerLogo}
+              resizeMode="contain"
+              tintColor="#1F1F1F"
+            />
+            <View>
+              <Text style={styles.title}>Settings</Text>
+            </View>
+          </View>
+        </View>
       </View>
       <View style={styles.contentSurface}>
         <PatternBackground />
@@ -144,6 +155,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     paddingHorizontal: 16,
     paddingBottom: 8,
+    paddingTop: 8,
   },
   contentSurface: {
     flex: 1,
@@ -166,10 +178,22 @@ const styles = StyleSheet.create({
     color: '#1B7F3A',
     marginBottom: 12,
   },
+  logoTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  headerLogo: {
+    width: 32,
+    height: 32,
+  },
   title: {
     fontSize: 20,
     fontWeight: '700',
-    marginBottom: 6,
     color: '#1F1F1F',
   },
   section: {

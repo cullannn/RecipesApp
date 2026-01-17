@@ -1,18 +1,11 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createJSONStorage } from 'zustand/middleware';
-import { useAuthStore } from './useAuthStore';
-
 export const appStorage = createJSONStorage(() => AsyncStorage);
 
-function getUserStorageKey() {
-  const userId = useAuthStore.getState().userId;
-  return userId || 'guest';
-}
-
-export function createUserScopedStorage() {
+export function createUserScopedStorage(getUserId: () => string) {
   return createJSONStorage(() => ({
-    getItem: (name) => AsyncStorage.getItem(`${name}:${getUserStorageKey()}`),
-    setItem: (name, value) => AsyncStorage.setItem(`${name}:${getUserStorageKey()}`, value),
-    removeItem: (name) => AsyncStorage.removeItem(`${name}:${getUserStorageKey()}`),
+    getItem: (name) => AsyncStorage.getItem(`${name}:${getUserId() || 'guest'}`),
+    setItem: (name, value) => AsyncStorage.setItem(`${name}:${getUserId() || 'guest'}`, value),
+    removeItem: (name) => AsyncStorage.removeItem(`${name}:${getUserId() || 'guest'}`),
   }));
 }

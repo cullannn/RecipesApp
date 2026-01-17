@@ -1,11 +1,19 @@
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Stack, useRouter, useSegments } from 'expo-router';
+import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
-import { useEffect, useState } from 'react';
+import { Text } from 'react-native';
 import { MD3LightTheme, PaperProvider } from 'react-native-paper';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import {
+  useFonts,
+  Montserrat_300Light,
+  Montserrat_400Regular,
+  Montserrat_500Medium,
+  Montserrat_700Bold,
+} from '@expo-google-fonts/montserrat';
+import { useEffect, useState } from 'react';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuthStore } from '@/src/state/useAuthStore';
@@ -25,43 +33,38 @@ const materialTheme = {
     background: '#F7F8FA',
     outline: '#E0E0E0',
   },
+  fonts: {
+    ...MD3LightTheme.fonts,
+    displayLarge: { fontFamily: 'Montserrat_700Bold', fontWeight: '700' },
+    displayMedium: { fontFamily: 'Montserrat_500Medium', fontWeight: '500' },
+    bodyLarge: { fontFamily: 'Montserrat_400Regular', fontWeight: '400' },
+    bodyMedium: { fontFamily: 'Montserrat_400Regular', fontWeight: '400' },
+    labelLarge: { fontFamily: 'Montserrat_400Regular', fontWeight: '400' },
+  },
 };
 
 export const unstable_settings = {
   anchor: '(tabs)',
 };
 
-function AuthGate() {
+function UserStoreRehydration() {
   const userId = useAuthStore((state) => state.userId);
-  const segments = useSegments();
-  const router = useRouter();
-  const [hydrated, setHydrated] = useState(() =>
+  const [authHydrated, setAuthHydrated] = useState(() =>
     useAuthStore.persist?.hasHydrated?.() ?? true
   );
 
   useEffect(() => {
-    const onFinish = useAuthStore.persist?.onFinishHydration?.(() => setHydrated(true));
-    if (!hydrated) {
-      setHydrated(useAuthStore.persist?.hasHydrated?.() ?? true);
+    const onFinish = useAuthStore.persist?.onFinishHydration?.(() => setAuthHydrated(true));
+    if (!authHydrated) {
+      setAuthHydrated(useAuthStore.persist?.hasHydrated?.() ?? true);
     }
     return onFinish;
-  }, [hydrated]);
+  }, [authHydrated]);
 
   useEffect(() => {
-    if (!hydrated || segments.length === 0) {
+    if (!authHydrated) {
       return;
     }
-    const isLogin = segments[0] === 'login';
-    if (!userId && !isLogin) {
-      router.replace('/login');
-      return;
-    }
-    if (userId && isLogin) {
-      router.replace('/(tabs)/deals');
-    }
-  }, [hydrated, segments, router, userId]);
-
-  useEffect(() => {
     if (usePreferencesStore.persist?.rehydrate) {
       usePreferencesStore.persist.rehydrate();
     }
@@ -74,20 +77,44 @@ function AuthGate() {
     if (useDealsStore.persist?.rehydrate) {
       useDealsStore.persist.rehydrate();
     }
-  }, [userId]);
+  }, [authHydrated, userId]);
 
   return null;
 }
 
 export default function RootLayout() {
+  const [fontsLoaded] = useFonts({
+    Montserrat_300Light,
+    Montserrat_400Regular,
+    Montserrat_500Medium,
+    Montserrat_700Bold,
+  });
+
   const colorScheme = useColorScheme();
+
+  useEffect(() => {
+    if (fontsLoaded) {
+      if (!Text.defaultProps) {
+        Text.defaultProps = {};
+      }
+      const existingStyle = Text.defaultProps.style;
+      Text.defaultProps.style = [
+        existingStyle,
+        { fontFamily: 'Montserrat_400Regular' },
+      ];
+    }
+  }, [fontsLoaded]);
+
+  if (!fontsLoaded) {
+    return null;
+  }
 
   return (
     <QueryClientProvider client={queryClient}>
       <PaperProvider theme={materialTheme}>
         <SafeAreaProvider>
           <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-            <AuthGate />
+            <UserStoreRehydration />
             <Stack>
               <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
               <Stack.Screen name="login" options={{ headerShown: false }} />

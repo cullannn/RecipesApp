@@ -288,25 +288,24 @@ export function generateMealPlan(options: PlanOptions): MealPlan {
   };
 }
 
-type QuantityAccumulator = {
+type UnitAccumulator = {
   unit: string;
   numericTotal: number;
   hasNumeric: boolean;
   parts: string[];
 };
 
-function accumulateQuantity(acc: QuantityAccumulator, ingredient: RecipeIngredient): QuantityAccumulator {
+function accumulateIntoUnit(acc: UnitAccumulator, ingredient: RecipeIngredient): void {
   const numeric = typeof ingredient.quantity === 'number' ? ingredient.quantity : null;
-  if (numeric !== null && ingredient.unit === acc.unit) {
+  if (numeric !== null) {
     acc.numericTotal += numeric;
     acc.hasNumeric = true;
   } else {
     acc.parts.push(`${ingredient.quantity} ${ingredient.unit}`.trim());
   }
-  return acc;
 }
 
-function buildQuantityString(acc: QuantityAccumulator): string {
+function buildQuantityStringPerUnit(acc: UnitAccumulator): string {
   const parts = [...acc.parts];
   if (acc.hasNumeric) {
     parts.unshift(`${acc.numericTotal} ${acc.unit}`.trim());
@@ -314,23 +313,36 @@ function buildQuantityString(acc: QuantityAccumulator): string {
   return parts.join(' + ');
 }
 
+function buildCombinedQuantity(unitMap: Map<string, UnitAccumulator>) {
+  const entries = Array.from(unitMap.values());
+  if (entries.length === 0) {
+    return '';
+  }
+  return entries
+    .map((acc) => buildQuantityStringPerUnit(acc))
+    .filter(Boolean)
+    .join(' + ');
+}
+
 export function buildGroceryList(plan: MealPlan, deals: DealItem[]): GroceryListItem[] {
-  const itemMap = new Map<string, { item: GroceryListItem; acc: QuantityAccumulator }>();
+  const itemMap = new Map<
+    string,
+    { item: GroceryListItem; unitMap: Map<string, UnitAccumulator>; displayName: string }
+  >();
 
   for (const recipe of plan.recipes) {
     for (const ingredient of recipe.ingredients) {
       const normalizedName = normalizeName(ingredient.name);
+      if (!normalizedName) {
+        continue;
+      }
       const unit = ingredient.unit || '';
-      const key = `${normalizedName}|${unit}`;
+      const key = normalizedName;
       const matchedDeal = deals.find((deal) => matchDealToIngredient(deal, ingredient.name));
 
-      if (!itemMap.has(key)) {
-        const acc: QuantityAccumulator = {
-          unit,
-          numericTotal: 0,
-          hasNumeric: false,
-          parts: [],
-        };
+      let entry = itemMap.get(key);
+      if (!entry) {
+        const unitMap = new Map<string, UnitAccumulator>();
         const listItem: GroceryListItem = {
           id: key,
           name: ingredient.name,
@@ -341,16 +353,40 @@ export function buildGroceryList(plan: MealPlan, deals: DealItem[]): GroceryList
             ? { store: matchedDeal.store, price: matchedDeal.price, dealId: matchedDeal.id }
             : undefined,
         };
-        itemMap.set(key, { item: listItem, acc });
+        entry = { item: listItem, unitMap, displayName: ingredient.name };
+        itemMap.set(key, entry);
       }
 
-      const entry = itemMap.get(key);
       if (entry) {
-        accumulateQuantity(entry.acc, ingredient);
-        entry.item.totalQuantity = buildQuantityString(entry.acc);
+        if (!entry.item.category && ingredient.category) {
+          entry.item.category = ingredient.category;
+        }
+        if (!entry.item.matchedDeal && matchedDeal) {
+          entry.item.matchedDeal = {
+            store: matchedDeal.store,
+            price: matchedDeal.price,
+            dealId: matchedDeal.id,
+          };
+        }
+        const unitKey = unit || 'each';
+        let unitAcc = entry.unitMap.get(unitKey);
+        if (!unitAcc) {
+          unitAcc = {
+            unit,
+            numericTotal: 0,
+            hasNumeric: false,
+            parts: [],
+          };
+          entry.unitMap.set(unitKey, unitAcc);
+        }
+        accumulateIntoUnit(unitAcc, ingredient);
+        entry.item.totalQuantity = buildCombinedQuantity(entry.unitMap);
       }
     }
   }
 
-  return Array.from(itemMap.values()).map((entry) => entry.item);
+  return Array.from(itemMap.values()).map((entry) => ({
+    ...entry.item,
+    name: entry.displayName,
+  }));
 }

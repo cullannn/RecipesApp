@@ -4,7 +4,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Button, Checkbox, Chip, TextInput } from 'react-native-paper';
 
-import { GradientTitle } from '@/components/gradient-title';
 import { PatternBackground } from '@/components/pattern-background';
 import { GROCERY_STORES } from '@/src/constants/stores';
 import { usePreferencesStore } from '@/src/state/usePreferencesStore';
@@ -67,7 +66,19 @@ export default function OnboardingScreen() {
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'left', 'right']}>
       <View style={styles.headerBar}>
-        <GradientTitle text="Your Kitchen" style={styles.title} />
+        <View style={styles.headerRow}>
+          <View style={styles.logoTitleRow}>
+            <Image
+              source={require('../assets/logos/app-logo/forkcast-logo-transparent.png')}
+              style={styles.headerLogo}
+              resizeMode="contain"
+              tintColor="#1F1F1F"
+            />
+            <View>
+              <Text style={styles.screenTitle}>Your Kitchen</Text>
+            </View>
+          </View>
+        </View>
       </View>
       <View style={styles.contentSurface}>
         <PatternBackground />
@@ -190,6 +201,20 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     paddingHorizontal: 16,
     paddingBottom: 8,
+    paddingTop: 8,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  logoTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  headerLogo: {
+    width: 32,
+    height: 32,
   },
   contentSurface: {
     flex: 1,
@@ -206,10 +231,9 @@ const styles = StyleSheet.create({
     borderColor: '#E6E9EF',
     padding: 16,
   },
-  title: {
+  screenTitle: {
     fontSize: 20,
     fontWeight: '700',
-    marginBottom: 6,
     color: '#1F1F1F',
   },
   subtitle: {

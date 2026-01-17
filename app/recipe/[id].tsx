@@ -1,10 +1,14 @@
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Animated, ScrollView, StyleSheet, Text, View, Image as RNImage } from 'react-native';
+import { useEffect, useRef } from 'react';
 import { Image } from 'expo-image';
 import { useLocalSearchParams } from 'expo-router';
 
 import { useRemoteImage } from '@/src/hooks/useRemoteImage';
 import { useRecipes } from '@/src/hooks/useRecipes';
 import { useMealPlanStore } from '@/src/state/useMealPlanStore';
+
+const fallbackImage =
+  'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=800&q=80';
 
 export default function RecipeDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -23,10 +27,56 @@ export default function RecipeDetailScreen() {
   }
 
   const heroImage = useRemoteImage(recipe.title, recipe.imageUrl ?? null, { kind: 'recipe' });
+  const isPlaceholder =
+    !heroImage ||
+    heroImage === fallbackImage ||
+    heroImage.includes('unsplash.com') ||
+    heroImage.includes('source.unsplash.com');
+  const shimmerValue = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    if (!isPlaceholder) {
+      return;
+    }
+    const anim = Animated.loop(
+      Animated.sequence([
+        Animated.timing(shimmerValue, {
+          toValue: 1,
+          duration: 900,
+          useNativeDriver: true,
+        }),
+        Animated.timing(shimmerValue, {
+          toValue: 0,
+          duration: 900,
+          useNativeDriver: true,
+        }),
+      ])
+    );
+    anim.start();
+    return () => anim.stop();
+  }, [isPlaceholder, shimmerValue]);
+  const shimmerOpacity = shimmerValue.interpolate({ inputRange: [0, 1], outputRange: [0.2, 0.5] });
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      {heroImage ? <Image source={{ uri: heroImage }} style={styles.heroImage} /> : null}
+      <View style={styles.heroImage}>
+        <Image
+          source={{ uri: heroImage ?? fallbackImage }}
+          style={StyleSheet.absoluteFill}
+          contentFit="cover"
+          cachePolicy="none"
+        />
+        {isPlaceholder ? (
+          <>
+            <Animated.View style={[styles.heroShimmer, { opacity: shimmerOpacity }]} />
+            <RNImage
+              source={require('../../assets/logos/app-logo/forkcast-logo-transparent.png')}
+              style={styles.heroLogoOverlay}
+              resizeMode="contain"
+              tintColor="#FFFFFF"
+            />
+          </>
+        ) : null}
+      </View>
       <Text style={styles.title}>{recipe.title}</Text>
       <Text style={styles.meta}>
         {recipe.cookTimeMins} mins • Serves {recipe.servings}
@@ -62,6 +112,21 @@ const styles = StyleSheet.create({
     height: 220,
     borderRadius: 16,
     marginBottom: 16,
+    overflow: 'hidden',
+  },
+  heroShimmer: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#FFFFFF',
+  },
+  heroLogoOverlay: {
+    position: 'absolute',
+    width: 84,
+    height: 84,
+    tintColor: '#FFFFFF',
+    opacity: 0.9,
+    top: '50%',
+    left: '50%',
+    transform: [{ translateX: -42 }, { translateY: -42 }],
   },
   centered: {
     flex: 1,

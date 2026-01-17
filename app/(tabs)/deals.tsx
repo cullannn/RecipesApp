@@ -10,12 +10,13 @@ import { GradientTitle } from '@/components/gradient-title';
 import { useDeals } from '@/src/hooks/useDeals';
 import { useRemoteImage } from '@/src/hooks/useRemoteImage';
 import { usePreferencesStore } from '@/src/state/usePreferencesStore';
-import { normalizeStoreName, resolveStoreLogo } from '@/src/utils/storeLogos';
+import { getStoreDisplayName, normalizeStoreName, resolveStoreLogo, shouldIgnoreStore } from '@/src/utils/storeLogos';
 import { getGtaCityForPostalCode } from '@/src/utils/postalCode';
 
 const fallbackImage =
   'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=800&q=80';
 const loadingFallbackIcon = 'basket-outline';
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 const FilterItem = memo(function FilterItem({
   label,
@@ -94,42 +95,67 @@ const DealCard = memo(function DealCard({
   const savingsPercent = hasSavings
     ? Math.round(((resolvedWasPrice! - (item.price ?? 0)) / resolvedWasPrice!) * 100)
     : null;
+  const pressScale = useRef(new Animated.Value(1)).current;
+  const animateCardScale = useCallback(
+    (value: number) => {
+      Animated.timing(pressScale, {
+        toValue: value,
+        duration: 160,
+        easing: Easing.out(Easing.circle),
+        useNativeDriver: true,
+      }).start();
+    },
+    [pressScale]
+  );
+  const handlePressIn = useCallback(() => animateCardScale(0.96), [animateCardScale]);
+  const handlePressOut = useCallback(() => animateCardScale(1), [animateCardScale]);
   return (
-    <Card style={styles.card} onPress={onPress}>
-      <View style={styles.cardClip}>
-        <View style={styles.cardRow}>
-          <Image
-            key={imageUrl ?? fallbackImage}
-            source={{ uri: imageUrl ?? fallbackImage }}
-            style={styles.thumb}
-            contentFit="cover"
-            cachePolicy="none"
-          />
-          <View style={styles.cardText}>
-            <Text style={styles.cardTitle}>{item.title}</Text>
-            <Text style={styles.cardMeta}>
-              {priceAvailable ? (
-                hasSavings ? (
-                  <>
-                    <Text style={styles.priceWas}>Was CAD {resolvedWasPrice?.toFixed(2)}</Text>
-                    {'  '}Now CAD {(item.price ?? 0).toFixed(2)} / {item.unit}
-                  </>
+    <AnimatedPressable
+      style={[styles.cardPressable, { transform: [{ scale: pressScale }] }]}
+      onPress={onPress}
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}>
+      <Card style={styles.card}>
+        <View style={styles.cardClip}>
+          <View style={styles.cardRow}>
+            <View style={styles.thumbWrap}>
+              <Image
+                key={imageUrl ?? fallbackImage}
+                source={{ uri: imageUrl ?? fallbackImage }}
+                style={styles.thumb}
+                contentFit="cover"
+                cachePolicy="none"
+              />
+              <View style={styles.thumbBadge} pointerEvents="none">
+                <MaterialCommunityIcons name="chevron-right" size={12} color="#1B7F3A" />
+              </View>
+            </View>
+            <View style={styles.cardText}>
+              <Text style={styles.cardTitle}>{item.title}</Text>
+              <Text style={styles.cardMeta}>
+                {priceAvailable ? (
+                  hasSavings ? (
+                    <>
+                      <Text style={styles.priceWas}>Was CAD {resolvedWasPrice?.toFixed(2)}</Text>
+                      {'  '}Now CAD {(item.price ?? 0).toFixed(2)} / {item.unit}
+                    </>
+                  ) : (
+                    <>CAD {(item.price ?? 0).toFixed(2)} / {item.unit}</>
+                  )
                 ) : (
-                  <>CAD {(item.price ?? 0).toFixed(2)} / {item.unit}</>
-                )
-              ) : (
-              <>
-                <Text style={styles.priceWas}>On Sale - Click To View</Text>
-              </>
-            )}
-            </Text>
-            {savingsPercent !== null ? (
-              <Text style={styles.cardSavings}>Save {savingsPercent}%</Text>
-            ) : null}
+                  <>
+                    <Text style={styles.priceWas}>On Sale - Click To View</Text>
+                  </>
+                )}
+              </Text>
+              {savingsPercent !== null ? (
+                <Text style={styles.cardSavings}>Save {savingsPercent}%</Text>
+              ) : null}
+            </View>
           </View>
         </View>
-      </View>
-    </Card>
+      </Card>
+    </AnimatedPressable>
   );
 });
 
@@ -205,11 +231,15 @@ function LoadingDealsSplash() {
   const float = floatValue.interpolate({ inputRange: [0, 1], outputRange: [0, -6] });
   return (
     <View style={styles.loadingWrap}>
-      <Animated.View style={[styles.loadingHalo, { transform: [{ translateY: float }] }]}>
-        <Animated.View style={[styles.loadingIconWrap, { transform: [{ rotate: spin }] }]}>
-          <MaterialCommunityIcons name={loadingFallbackIcon} size={44} color="#1B7F3A" />
-        </Animated.View>
-      </Animated.View>
+          <Animated.View style={[styles.loadingHalo, { transform: [{ translateY: float }] }]}>
+            <Animated.View style={[styles.loadingIconWrap, { transform: [{ rotate: spin }] }]}>
+              <Animated.Image
+                source={require('../../assets/logos/app-logo/forkcast-logo-transparent.png')}
+                style={styles.loadingIconImage}
+                resizeMode="contain"
+              />
+            </Animated.View>
+          </Animated.View>
       <Text style={styles.loadingText}>Refreshing the flyers...</Text>
       <Text style={styles.loadingSubtext}>Grabbing the freshest grocery deals for you.</Text>
     </View>
@@ -276,10 +306,26 @@ export default function DealsScreen() {
     categories: selectedCategory ? [selectedCategory] : undefined,
   });
 
-  const deals = useMemo(() => dealsQuery.data ?? [], [dealsQuery.data]);
+  const deals = useMemo(
+    () =>
+      (dealsQuery.data ?? []).filter((deal) => !shouldIgnoreStore(deal.store)),
+    [dealsQuery.data]
+  );
   const cityLabel = useMemo(
     () => (postalCode ? getGtaCityForPostalCode(postalCode) : null),
     [postalCode]
+  );
+  const searchScale = useRef(new Animated.Value(1)).current;
+  const animateSearchScale = useCallback(
+    (value: number) => {
+      Animated.timing(searchScale, {
+        toValue: value,
+        duration: 140,
+        easing: Easing.out(Easing.quad),
+        useNativeDriver: true,
+      }).start();
+    },
+    [searchScale]
   );
 
   const stores = useMemo(() => {
@@ -287,12 +333,12 @@ export default function DealsScreen() {
       return [selectedStore];
     }
     const list = new Set<string>();
-    dealsQuery.data?.forEach((deal) => list.add(deal.store));
+    deals.forEach((deal) => list.add(deal.store));
     if (list.size === 0) {
       return [];
     }
     return buildStoreFilterList(Array.from(list), favoriteStores);
-  }, [dealsQuery.data, favoriteStores, selectedStore]);
+  }, [deals, favoriteStores, selectedStore]);
 
   const groupedDeals = useMemo(() => {
     type Deal = (typeof deals)[number];
@@ -416,14 +462,7 @@ export default function DealsScreen() {
     seafood: 'fish',
     deli: 'food-drumstick',
   };
-  if (!postalCode) {
-    return (
-      <View style={styles.centered}>
-        <Text style={styles.title}>Add your postal code to see GTA deals.</Text>
-        <Text style={styles.subtitle}>Go to Settings to set your location.</Text>
-      </View>
-    );
-  }
+  const hasPostalCode = Boolean(postalCode);
 
   const renderSectionHeader = useCallback(
     ({
@@ -442,6 +481,7 @@ export default function DealsScreen() {
         inputRange: [0, 1],
         outputRange: [0.92, 1],
       });
+      const displayStoreName = getStoreDisplayName(section.store);
       return (
         <View style={[styles.groupHeaderCard, isCollapsed && styles.groupHeaderCollapsed]}>
           <Pressable onPress={() => toggleGroup(section.key)} style={styles.groupHeader}>
@@ -454,7 +494,7 @@ export default function DealsScreen() {
                 />
               ) : null}
               <Text style={styles.groupTitle}>
-                {section.store} {section.range}
+                {displayStoreName} {section.range}
               </Text>
               <View style={styles.groupHeaderSpacer} />
               <Animated.View style={[styles.groupToggle, { transform: [{ scale }] }]}>
@@ -496,9 +536,16 @@ export default function DealsScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
-      <Modal animationType="fade" transparent visible={searchModalVisible} onRequestClose={() => setSearchModalVisible(false)}>
-        <View style={styles.searchModalBackdrop}>
-          <View style={styles.searchModalContent}>
+      {!hasPostalCode ? (
+        <View style={styles.centered}>
+          <Text style={styles.title}>Add your postal code to see GTA deals.</Text>
+          <Text style={styles.subtitle}>Go to Settings to set your location.</Text>
+        </View>
+      ) : (
+        <>
+          <Modal animationType="fade" transparent visible={searchModalVisible} onRequestClose={() => setSearchModalVisible(false)}>
+            <View style={styles.searchModalBackdrop}>
+              <View style={styles.searchModalContent}>
             <Text style={styles.searchModalTitle}>Search deals</Text>
             <TextInput
               mode="outlined"
@@ -527,13 +574,27 @@ export default function DealsScreen() {
         </View>
       </Modal>
       <DealImageModal deal={selectedDeal} onClose={() => setSelectedDeal(null)} />
-      <View style={styles.filterBar}>
+      <View style={styles.headerBar}>
         <View style={styles.headerRow}>
-          <GradientTitle text={cityLabel ? `Deals in ${cityLabel}` : 'Deals'} style={styles.title} />
-          <Pressable style={styles.searchButton} onPress={() => setSearchModalVisible(true)}>
+          <View style={styles.logoTitleRow}>
+            <Image
+              source={require('../../assets/logos/app-logo/forkcast-logo-transparent.png')}
+              style={styles.headerLogo}
+              resizeMode="contain"
+              tintColor="#1B1B1B"
+            />
+            <Text style={styles.headerTitle}>{cityLabel ? `Deals in ${cityLabel}` : 'Deals'}</Text>
+          </View>
+          <AnimatedPressable
+            style={[styles.searchButton, { transform: [{ scale: searchScale }] }]}
+            onPress={() => setSearchModalVisible(true)}
+            onPressIn={() => animateSearchScale(0.9)}
+            onPressOut={() => animateSearchScale(1)}>
             <MaterialCommunityIcons name="magnify" size={20} color="#FFFFFF" />
-          </Pressable>
+          </AnimatedPressable>
         </View>
+      </View>
+      <View style={styles.filterBar}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsRow}>
           <FilterItem
             label="All Stores"
@@ -543,7 +604,7 @@ export default function DealsScreen() {
           {stores.map((store) => (
             <FilterItem
               key={store}
-              label={store}
+              label={getStoreDisplayName(store)}
               selected={selectedStore === store}
               onPress={() => startTransition(() => setSelectedStore(store))}
               imageSource={resolveStoreLogo(store)}
@@ -574,41 +635,43 @@ export default function DealsScreen() {
         </ScrollView>
       </View>
 
-      <View style={styles.listWrapper}>
-        <PatternBackground />
-        <SectionList
-          sections={sections}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.list}
-          style={styles.listSurface}
-          renderSectionHeader={renderSectionHeader}
-          renderItem={renderDealItem}
-          ListEmptyComponent={
-            dealsQuery.isLoading ? (
-              <LoadingDealsSplash />
-            ) : (
-              <View style={styles.emptyState}>
-                <Text style={styles.subtitle}>
-                  {dealsQuery.isError
-                    ? 'Waiting for the local scraper to finish. Hold tight!'
-                    : 'No deals found for that filter.'}
-                </Text>
-                {dealsQuery.isError ? (
-                  <Button mode="contained" compact onPress={() => dealsQuery.refetch()}>
-                    Retry
-                  </Button>
-                ) : null}
-              </View>
-            )
-          }
-          initialNumToRender={6}
-          maxToRenderPerBatch={6}
-          windowSize={9}
-          updateCellsBatchingPeriod={50}
-          removeClippedSubviews
-          stickySectionHeadersEnabled={false}
-        />
-      </View>
+          <View style={styles.listWrapper}>
+            <PatternBackground />
+            <SectionList
+              sections={sections}
+              keyExtractor={(item) => item.id}
+              contentContainerStyle={styles.list}
+              style={styles.listSurface}
+              renderSectionHeader={renderSectionHeader}
+              renderItem={renderDealItem}
+              ListEmptyComponent={
+                dealsQuery.isLoading ? (
+                  <LoadingDealsSplash />
+                ) : (
+                  <View style={styles.emptyState}>
+                    <Text style={styles.subtitle}>
+                      {dealsQuery.isError
+                        ? 'Waiting for the local scraper to finish. Hold tight!'
+                        : 'No deals found for that filter.'}
+                    </Text>
+                    {dealsQuery.isError ? (
+                      <Button mode="contained" compact onPress={() => dealsQuery.refetch()}>
+                        Retry
+                      </Button>
+                    ) : null}
+                  </View>
+                )
+              }
+              initialNumToRender={6}
+              maxToRenderPerBatch={6}
+              windowSize={9}
+              updateCellsBatchingPeriod={50}
+              removeClippedSubviews
+              stickySectionHeadersEnabled={false}
+            />
+          </View>
+        </>
+      )}
     </SafeAreaView>
   );
 }
@@ -619,12 +682,31 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     paddingTop: 0,
   },
+  headerBar: {
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 16,
+    paddingBottom: 8,
+    paddingTop: 4,
+  },
   headerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    marginBottom: 8,
+    marginTop: 4,
+  },
+  logoTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  headerLogo: {
+    width: 32,
+    height: 32,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#000000',
   },
   filterBar: {
     backgroundColor: '#FFFFFF',
@@ -638,8 +720,11 @@ const styles = StyleSheet.create({
   },
   searchButton: {
     backgroundColor: '#1B7F3A',
-    padding: 8,
-    borderRadius: 999,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   searchModalBackdrop: {
     flex: 1,
@@ -751,9 +836,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(27, 127, 58, 0.15)',
   },
-  loadingImage: {
-    width: 72,
-    height: 72,
+  loadingIconImage: {
+    width: 54,
+    height: 54,
+    tintColor: '#1B7F3A',
   },
   loadingText: {
     fontSize: 16,
@@ -922,6 +1008,10 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 10 },
     elevation: 6,
   },
+  cardPressable: {
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
   cardClip: {
     borderRadius: 16,
     overflow: 'hidden',
@@ -949,7 +1039,25 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(27, 127, 58, 0.35)',
     backgroundColor: '#F1F3F4',
+  },
+  thumbWrap: {
+    position: 'relative',
+  },
+  thumbBadge: {
+    position: 'absolute',
+    bottom: 4,
+    right: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: 'rgba(27, 127, 58, 0.35)',
   },
   cardText: {
     flex: 1,

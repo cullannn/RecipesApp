@@ -1,17 +1,18 @@
-import { memo, useCallback, useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Animated, Easing, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
-import { Card, IconButton, Snackbar } from 'react-native-paper';
+import { Card, IconButton, Snackbar, TextInput, Button } from 'react-native-paper';
 import { router } from 'expo-router';
 
 import { PatternBackground } from '@/components/pattern-background';
-import { GradientTitle } from '@/components/gradient-title';
 import { useRemoteImage } from '@/src/hooks/useRemoteImage';
 import { useMealPlanStore } from '@/src/state/useMealPlanStore';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 const fallbackImage =
   'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=800&q=80';
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 export default function RecipesScreen() {
   const { recipeHistory, removeHistoryRecipe, restoreHistoryRecipe } = useMealPlanStore();
@@ -20,6 +21,11 @@ export default function RecipesScreen() {
     recipe?: { id: string; title: string; imageUrl?: string | null; cookTimeMins: number; servings: number };
     dateKey?: string;
   } | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchModalVisible, setSearchModalVisible] = useState(false);
+  const [searchInput, setSearchInput] = useState('');
+
+  const normalizedSearch = searchQuery.trim().toLowerCase();
 
   const sections = useMemo(() => {
     const grouped = new Map<
@@ -40,7 +46,10 @@ export default function RecipesScreen() {
       if (!bucket) {
         return;
       }
-      entry.recipes.forEach((recipe) => {
+      const filteredRecipes = normalizedSearch
+        ? entry.recipes.filter((recipe) => recipe.title.toLowerCase().includes(normalizedSearch))
+        : entry.recipes;
+      filteredRecipes.forEach((recipe) => {
         if (bucket.seen.has(recipe.id)) {
           return;
         }
@@ -48,12 +57,14 @@ export default function RecipesScreen() {
         bucket.seen.add(recipe.id);
       });
     });
-    return Array.from(grouped.values()).map(({ dateKey, title, items }) => ({
-      dateKey,
-      title,
-      data: items,
-    }));
-  }, [recipeHistory]);
+    return Array.from(grouped.values())
+      .map(({ dateKey, title, items }) => ({
+        dateKey,
+        title,
+        data: items,
+      }))
+      .filter((section) => section.data.length > 0);
+  }, [recipeHistory, normalizedSearch]);
 
   const handleRemove = useCallback(
     (
@@ -71,11 +82,88 @@ export default function RecipesScreen() {
     router.push(`/recipe/${id}`);
   }, []);
 
+  const searchScale = useRef(new Animated.Value(1)).current;
+  const animateSearchScale = useCallback(
+    (value: number) => {
+      Animated.timing(searchScale, {
+        toValue: value,
+        duration: 140,
+        easing: Easing.out(Easing.quad),
+        useNativeDriver: true,
+      }).start();
+    },
+    [searchScale]
+  );
+  const openSearchModal = useCallback(() => {
+    setSearchInput(searchQuery);
+    setSearchModalVisible(true);
+  }, [searchQuery]);
+  const handleSearchSubmit = useCallback(() => {
+    setSearchQuery(searchInput.trim());
+    setSearchModalVisible(false);
+  }, [searchInput]);
+  const handleClearSearch = useCallback(() => {
+    setSearchQuery('');
+    setSearchInput('');
+    setSearchModalVisible(false);
+  }, []);
+  const closeSearchModal = useCallback(() => setSearchModalVisible(false), []);
+
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <View style={styles.headerBar}>
-        <GradientTitle text="Recipes" style={styles.title} />
+        <View style={styles.headerRow}>
+          <View style={styles.logoTitleRow}>
+            <Image
+              source={require('../../assets/logos/app-logo/forkcast-logo-transparent.png')}
+              style={styles.headerLogo}
+              contentFit="contain"
+              tintColor="#1F1F1F"
+            />
+            <View>
+              <Text style={styles.headerTitle}>Recipes</Text>
+            </View>
+          </View>
+          <AnimatedPressable
+            style={[styles.searchButton, { transform: [{ scale: searchScale }] }]}
+            onPress={openSearchModal}
+            onPressIn={() => animateSearchScale(0.9)}
+            onPressOut={() => animateSearchScale(1)}>
+            <MaterialCommunityIcons name="magnify" size={20} color="#FFFFFF" />
+          </AnimatedPressable>
+        </View>
       </View>
+      <Modal animationType="fade" transparent visible={searchModalVisible} onRequestClose={closeSearchModal}>
+        <View style={styles.searchModalBackdrop}>
+          <View style={styles.searchModalContent}>
+            <Text style={styles.searchModalTitle}>Search recipes</Text>
+            <TextInput
+              mode="outlined"
+              placeholder="Search recipes"
+              value={searchInput}
+              onChangeText={setSearchInput}
+              onSubmitEditing={handleSearchSubmit}
+              style={styles.searchModalInput}
+              textColor="#2A2F34"
+              placeholderTextColor="#9AA0A6"
+              left={<TextInput.Icon icon="magnify" color="#7A8086" />}
+              right={
+                searchInput ? (
+                  <TextInput.Icon icon="close-circle" color="#7A8086" onPress={() => setSearchInput('')} />
+                ) : undefined
+              }
+            />
+            <Button
+              mode="contained"
+              buttonColor="#1B7F3A"
+              textColor="#FFFFFF"
+              style={styles.searchModalButton}
+              onPress={handleSearchSubmit}>
+              Done
+            </Button>
+          </View>
+        </View>
+      </Modal>
       <View style={styles.contentSurface}>
         <PatternBackground />
         {sections.length === 0 ? (
@@ -137,45 +225,95 @@ const RecipeListItem = memo(function RecipeListItem({
   onPress: (recipeId: string) => void;
 }) {
   const imageUrl = useRemoteImage(item.title, item.imageUrl ?? null, { kind: 'recipe' });
+  const isPlaceholder =
+    !imageUrl ||
+    imageUrl === fallbackImage ||
+    imageUrl.includes('unsplash.com') ||
+    imageUrl.includes('source.unsplash.com');
+  const shimmerValue = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    if (!isPlaceholder) {
+      return;
+    }
+    const anim = Animated.loop(
+      Animated.sequence([
+        Animated.timing(shimmerValue, {
+          toValue: 1,
+          duration: 1100,
+          useNativeDriver: true,
+        }),
+        Animated.timing(shimmerValue, {
+          toValue: 0,
+          duration: 1100,
+          useNativeDriver: true,
+        }),
+      ])
+    );
+    anim.start();
+    return () => anim.stop();
+  }, [isPlaceholder, shimmerValue]);
+  const shimmerOpacity = shimmerValue.interpolate({ inputRange: [0, 1], outputRange: [0.15, 0.4] });
+  const scale = useRef(new Animated.Value(1)).current;
+  const animateScale = useCallback(
+    (value: number) => {
+      Animated.timing(scale, {
+        toValue: value,
+        duration: 140,
+        easing: Easing.out(Easing.circle),
+        useNativeDriver: true,
+      }).start();
+    },
+    [scale]
+  );
   return (
-    <Card style={styles.card} onPress={() => onPress(item.id)}>
-      <View style={styles.cardClip}>
-        <View style={styles.coverWrap}>
-          <Image
-            key={imageUrl ?? fallbackImage}
-            source={{ uri: imageUrl ?? fallbackImage }}
-            style={styles.cover}
-            contentFit="cover"
-            cachePolicy="none"
-          />
-          <IconButton
-            icon="close"
-            size={16}
-            onPress={() => onRemove(item.id, dateKey, item)}
-            style={styles.removeButton}
-            accessibilityLabel="Remove recipe from history"
-          />
-        </View>
-        <Card.Content style={styles.cardContent}>
-          <View style={styles.cardContentRow}>
-            <View style={styles.cardTextBlock}>
-              <Text style={styles.cardTitle}>{item.title}</Text>
-              <Text style={styles.cardMeta}>
-                {item.cookTimeMins} mins • Serves {item.servings}
-              </Text>
-            </View>
+    <AnimatedPressable
+      style={[styles.cardPressable, { transform: [{ scale }] }]}
+      onPress={() => onPress(item.id)}
+      onPressIn={() => animateScale(0.96)}
+      onPressOut={() => animateScale(1)}
+      accessibilityRole="button">
+      <Card style={styles.card}>
+        <View style={styles.cardClip}>
+          <View style={styles.coverWrap}>
+            <Image
+              key={imageUrl ?? fallbackImage}
+              source={{ uri: imageUrl ?? fallbackImage }}
+              style={styles.cover}
+              contentFit="cover"
+              cachePolicy="none"
+            />
+            {isPlaceholder ? (
+              <Animated.View style={[styles.imageShimmer, { opacity: shimmerOpacity }]} />
+            ) : null}
             <IconButton
-              icon="chevron-right"
-              size={26}
-              onPress={() => router.push(`/recipe/${item.id}`)}
-              style={styles.actionButton}
-              iconColor="#1B7F3A"
-              accessibilityLabel="View recipe details"
+              icon="close"
+              size={16}
+              onPress={() => onRemove(item.id, dateKey, item)}
+              style={styles.removeButton}
+              accessibilityLabel="Remove recipe from history"
             />
           </View>
-        </Card.Content>
-      </View>
-    </Card>
+          <Card.Content style={styles.cardContent}>
+            <View style={styles.cardContentRow}>
+              <View style={styles.cardTextBlock}>
+                <Text style={styles.cardTitle}>{item.title}</Text>
+                <Text style={styles.cardMeta}>
+                  {item.cookTimeMins} mins • Serves {item.servings}
+                </Text>
+              </View>
+              <IconButton
+                icon="chevron-right"
+                size={26}
+                onPress={() => router.push(`/recipe/${item.id}`)}
+                style={styles.actionButton}
+                iconColor="#1B7F3A"
+                accessibilityLabel="View recipe details"
+              />
+            </View>
+          </Card.Content>
+        </View>
+      </Card>
+    </AnimatedPressable>
   );
 });
 
@@ -188,10 +326,42 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     paddingHorizontal: 16,
     paddingBottom: 8,
+    paddingTop: 8,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  logoTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  headerLogo: {
+    width: 32,
+    height: 32,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1F1F1F',
   },
   contentSurface: {
     flex: 1,
     backgroundColor: '#D9DEE6',
+  },
+  searchButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#1B7F3A',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
   },
   title: {
     fontSize: 20,
@@ -246,12 +416,20 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 10 },
     elevation: 6,
   },
+  cardPressable: {
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
   cardClip: {
     borderRadius: 16,
     overflow: 'hidden',
   },
   coverWrap: {
     position: 'relative',
+  },
+  imageShimmer: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#FFFFFF',
   },
   cover: {
     width: '100%',
@@ -298,5 +476,32 @@ const styles = StyleSheet.create({
   cardMeta: {
     fontSize: 12,
     color: '#5F6368',
+  },
+  searchModalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+  },
+  searchModalContent: {
+    width: '100%',
+    maxWidth: 420,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 20,
+  },
+  searchModalTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1F1F1F',
+  },
+  searchModalInput: {
+    height: 44,
+    backgroundColor: '#FFFFFF',
+    marginTop: 8,
+  },
+  searchModalButton: {
+    marginTop: 8,
   },
 });

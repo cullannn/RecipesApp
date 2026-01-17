@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { MealPlan, Recipe, RecipeHistoryEntry } from '@/src/types';
 import { createUserScopedStorage } from './storage';
+import { useAuthStore } from './useAuthStore';
 
 type MealPlanState = {
   mealsRequested: number;
@@ -90,6 +91,9 @@ export const useMealPlanStore = create<MealPlanState>()(
       },
       setPlan: (plan) => set({ plan }),
     }),
-    { name: 'dealchef-meal-plan-v2', storage: createUserScopedStorage() }
+    {
+      name: 'dealchef-meal-plan-v2',
+      storage: createUserScopedStorage(() => useAuthStore.getState().userId),
+    }
   )
 );

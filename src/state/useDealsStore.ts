@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { createUserScopedStorage } from './storage';
+import { useAuthStore } from './useAuthStore';
 
 type DealsState = {
   savedDealIds: string[];
@@ -19,6 +20,9 @@ export const useDealsStore = create<DealsState>()(
         });
       },
     }),
-    { name: 'dealchef-saved-deals', storage: createUserScopedStorage() }
+    {
+      name: 'dealchef-saved-deals',
+      storage: createUserScopedStorage(() => useAuthStore.getState().userId),
+    }
   )
 );

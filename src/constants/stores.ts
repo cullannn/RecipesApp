@@ -14,6 +14,6 @@ export const GROCERY_STORES = [
   'Galleria Supermarket',
   'H Mart',
   'Bestco Food Mart',
-  'Foody Mart',
+  'Foody',
   'T&T Supermarket',
 ];

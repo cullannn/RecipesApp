@@ -7,7 +7,7 @@ import sharp from 'sharp';
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const OPENAI_MODEL = process.env.OPENAI_MODEL;
-const OPENAI_RECIPE_MODEL = process.env.OPENAI_RECIPE_MODEL ?? OPENAI_MODEL ?? 'gpt-5-mini';
+const OPENAI_RECIPE_MODEL = process.env.OPENAI_RECIPE_MODEL ?? OPENAI_MODEL ?? 'gpt-5-nano';
 const OPENAI_TITLE_MODEL = process.env.OPENAI_TITLE_MODEL ?? 'gpt-5-nano';
 const OPENAI_NUTRITION_MODEL = process.env.OPENAI_NUTRITION_MODEL ?? 'gpt-5-nano';
 const OPENAI_IMAGE_PROMPT_MODEL = process.env.OPENAI_IMAGE_PROMPT_MODEL ?? 'gpt-5-nano';
@@ -19,9 +19,10 @@ const PORT = Number.parseInt(process.env.PORT ?? '8787', 10);
 const CACHE_DIR = path.join(process.cwd(), 'server', 'cache');
 const IMAGE_CACHE_PATH = path.join(CACHE_DIR, 'images.json');
 const IMAGE_FILES_DIR = path.join(CACHE_DIR, 'images');
+const RECIPE_CACHE_PATH = path.join(CACHE_DIR, 'recipes.json');
 const OPENAI_TIMEOUT_MS = Number.parseInt(process.env.OPENAI_TIMEOUT_MS ?? '90000', 10);
 const OPENAI_IMAGE_TIMEOUT_MS = Number.parseInt(
-  process.env.OPENAI_IMAGE_TIMEOUT_MS ?? '60000',
+  process.env.OPENAI_IMAGE_TIMEOUT_MS ?? '120000',
   10
 );
 const UNSPLASH_TIMEOUT_MS = Number.parseInt(process.env.UNSPLASH_TIMEOUT_MS ?? '8000', 10);
@@ -91,6 +92,10 @@ async function ensureImageFilesDir() {
 let imageCacheData = null;
 let imageCacheLoadPromise = null;
 let imageCacheWritePromise = Promise.resolve();
+
+let recipeCacheData = null;
+let recipeCacheLoadPromise = null;
+let recipeCacheWritePromise = Promise.resolve();
 
 async function loadImageCacheFromDisk() {
   try {
@@ -226,6 +231,13 @@ function buildImageQuery(input) {
     .replace(/\s+/g, ' ')
     .trim();
   return cleaned || 'food';
+}
+
+function isUnsplashUrl(url) {
+  if (!url) {
+    return false;
+  }
+  return url.includes('unsplash.com') || url.includes('source.unsplash.com');
 }
 
 async function resolveUnsplashImage(query) {
@@ -466,6 +478,51 @@ function filterByCuisine(recipes, cuisines) {
   });
 }
 
+async function loadRecipeCacheFromDisk() {
+  try {
+    const raw = await readFile(RECIPE_CACHE_PATH, 'utf-8');
+    return JSON.parse(raw);
+  } catch (error) {
+    return {};
+  }
+}
+
+async function getRecipeCache() {
+  if (recipeCacheData) {
+    return recipeCacheData;
+  }
+  if (!recipeCacheLoadPromise) {
+    recipeCacheLoadPromise = (async () => {
+      recipeCacheData = await loadRecipeCacheFromDisk();
+      return recipeCacheData;
+    })();
+  }
+  return recipeCacheLoadPromise;
+}
+
+async function saveRecipeCache(cache) {
+  await ensureCacheDir();
+  recipeCacheData = cache;
+  recipeCacheWritePromise = recipeCacheWritePromise
+    .then(() => writeFile(RECIPE_CACHE_PATH, `${JSON.stringify(cache, null, 2)}\n`, 'utf-8'))
+    .catch(() => {});
+  return recipeCacheWritePromise;
+}
+
+function buildRecipeCacheKey({ prompt, cuisines, count }) {
+  const normalizedPrompt = String(prompt ?? '').trim().toLowerCase();
+  const normalizedCuisines = Array.isArray(cuisines)
+    ? cuisines.map((cuisine) => String(cuisine).trim().toLowerCase()).filter(Boolean)
+    : [];
+  const normalizedCount = Number.isFinite(count) ? count : 0;
+  const keySource = JSON.stringify({
+    prompt: normalizedPrompt,
+    cuisines: normalizedCuisines.sort(),
+    count: normalizedCount,
+  });
+  return crypto.createHash('sha256').update(keySource).digest('hex').slice(0, 20);
+}
+
 async function attachRecipeImages(recipes, baseUrl) {
   if (!Array.isArray(recipes) || recipes.length === 0) {
     return recipes;
@@ -473,12 +530,15 @@ async function attachRecipeImages(recipes, baseUrl) {
   const cache = await getImageCache();
   let cacheChanged = false;
   for (const recipe of recipes) {
-    if (!recipe || recipe.imageUrl) {
+    if (!recipe) {
       continue;
     }
     const title = String(recipe.title ?? '').trim();
     const normalized = title.toLowerCase();
     if (!normalized) {
+      continue;
+    }
+    if (recipe.imageUrl && !isUnsplashUrl(recipe.imageUrl)) {
       continue;
     }
     let cachedUrl = cache[normalized];
@@ -491,35 +551,23 @@ async function attachRecipeImages(recipes, baseUrl) {
         cachedUrl = fileUrl;
       }
     }
-    if (
-      typeof cachedUrl === 'string' &&
-      cachedUrl &&
-      !cachedUrl.includes('source.unsplash.com')
-    ) {
+    if (typeof cachedUrl === 'string' && cachedUrl && !isUnsplashUrl(cachedUrl)) {
       recipe.imageUrl = cachedUrl;
       continue;
     }
-    let imageUrl;
-    if (OPENAI_API_KEY) {
-      try {
-        const prompt = await polishImagePrompt(`High-quality food photo of ${title}.`);
-        const generated = await callOpenAiImage(prompt);
-        const fileName = await createScaledImageFileFromGenerated(normalized, generated);
-        if (fileName) {
-          imageUrl = `${baseUrl}/api/image-file/${fileName}`;
-        }
-      } catch (error) {
-        logImageError(`recipe "${title}"`, error);
-        // Fall back to Unsplash on OpenAI failures.
-      }
-    }
-    if (!imageUrl) {
-      imageUrl = await resolveUnsplashImage(title);
-    }
+    const imageUrl = recipe.imageUrl ?? (await resolveUnsplashImage(title));
     if (imageUrl) {
       recipe.imageUrl = imageUrl;
       cache[normalized] = imageUrl;
       cacheChanged = true;
+    }
+    if (OPENAI_API_KEY) {
+      scheduleOpenAiImage({
+        cacheKey: `recipe:${normalized}`,
+        normalized,
+        query: title,
+        baseUrl,
+      });
     }
   }
   if (cacheChanged) {
@@ -600,14 +648,30 @@ async function handleRecipes(req, res, body) {
     sendJson(res, 500, { error: 'Missing OPENAI_API_KEY.' });
     return;
   }
+  const baseUrl = `http://${req.headers.host ?? 'localhost'}`;
   const requestStart = Date.now();
   const data = JSON.parse(body || '{}');
   const prompt = String(data.prompt ?? '').trim();
   const cuisines = Array.isArray(data.cuisines) ? data.cuisines.map((c) => String(c)) : [];
   const count = Number.isFinite(data.count) ? data.count : undefined;
+  const userId = data.userId ? String(data.userId).trim() : '';
   if (!prompt) {
     sendJson(res, 400, { error: 'Prompt is required.' });
     return;
+  }
+
+  const recipeCache = await getRecipeCache();
+  const cacheKey = buildRecipeCacheKey({ prompt, cuisines, count });
+  const cachedEntry = recipeCache[cacheKey];
+  if (cachedEntry && Array.isArray(cachedEntry.recipes) && cachedEntry.recipes.length > 0) {
+    const generatedBy = typeof cachedEntry.generatedBy === 'string' ? cachedEntry.generatedBy : '';
+    if (!userId || !generatedBy || generatedBy !== userId) {
+      await attachRecipeImages(cachedEntry.recipes, baseUrl);
+      console.log(`[ai:recipes] cache hit recipes=${cachedEntry.recipes.length}`);
+      sendJson(res, 200, { recipes: cachedEntry.recipes, cuisineFallback: false });
+      return;
+    }
+    console.log('[ai:recipes] cache bypass for same user');
   }
 
   console.log(`[ai:recipes] request start prompt="${prompt.slice(0, 80)}" cuisines=${cuisines.join(',') || 'none'}`);
@@ -636,6 +700,13 @@ async function handleRecipes(req, res, body) {
     recipes = coercedRecipes;
     cuisineFallback = true;
   }
+  await attachRecipeImages(recipes, baseUrl);
+  recipeCache[cacheKey] = {
+    recipes,
+    generatedBy: userId || undefined,
+    createdAt: nowIso(),
+  };
+  await saveRecipeCache(recipeCache);
   console.log(
     `[ai:recipes] success recipes=${recipes.length} cuisineFallback=${cuisineFallback} durationMs=${Date.now() - requestStart}`
   );
