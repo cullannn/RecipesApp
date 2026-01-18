@@ -133,6 +133,8 @@ export async function generateRecipesFromPrompt(input: {
   maxCookTimeMins?: number;
   dietaryPreferences?: string[];
   allergies?: string;
+  preferredIngredients?: string[];
+  excludeTitles?: string[];
 }): Promise<{ recipes: Recipe[]; cuisineFallback: boolean }> {
   const userId = useAuthStore.getState().userId;
   const controller = new AbortController();
@@ -153,6 +155,8 @@ export async function generateRecipesFromPrompt(input: {
         maxCookTimeMins: input.maxCookTimeMins,
         dietaryPreferences: input.dietaryPreferences,
         allergies: input.allergies,
+        preferredIngredients: input.preferredIngredients ?? [],
+        excludeTitles: input.excludeTitles ?? [],
         ...(userId ? { userId } : {}),
       }),
     });

@@ -29,6 +29,10 @@ const IMAGE_CACHE_PATH = path.join(CACHE_DIR, 'images.json');
 const IMAGE_FILES_DIR = path.join(CACHE_DIR, 'images');
 const RECIPE_CACHE_PATH = path.join(CACHE_DIR, 'recipes.json');
 const OPENAI_TIMEOUT_MS = Number.parseInt(process.env.OPENAI_TIMEOUT_MS ?? '90000', 10);
+const NEBIUS_TIMEOUT_MS = Number.parseInt(
+  process.env.NEBIUS_TIMEOUT_MS ?? String(OPENAI_TIMEOUT_MS),
+  10
+);
 const OPENAI_IMAGE_TIMEOUT_MS = Number.parseInt(
   process.env.OPENAI_IMAGE_TIMEOUT_MS ?? '120000',
   10
@@ -60,6 +64,11 @@ if (!OPENAI_API_KEY) {
 if (!NEBIUS_API_KEY) {
   console.error('Missing NEBIUS_API_KEY.');
 }
+
+function logWithTs(...args) {
+  console.log(`[${new Date().toISOString()}]`, ...args);
+}
+
 console.log(`[ai:image] provider=nebius base=${NEBIUS_IMAGE_BASE_URL} model=${NEBIUS_IMAGE_MODEL}`);
 console.log(
   `[ai:recipes] provider=${RECIPE_PROVIDER} ` +
@@ -125,8 +134,16 @@ function buildPrompt(input) {
     avoidTitles.length > 0
       ? `Do not repeat these recipe titles: ${avoidTitles.join('; ')}.`
       : '';
+  const preferredIngredients = Array.isArray(input.preferredIngredients)
+    ? input.preferredIngredients.map((item) => String(item).trim()).filter(Boolean)
+    : [];
+  const preferredLine =
+    preferredIngredients.length > 0
+      ? `Prioritize using these preferred ingredients if possible: ${preferredIngredients.join(', ')}.`
+      : '';
   return [
-    `Generate ${count} distinct weeknight recipes for a home cook in Toronto.`,
+    `Generate exactly ${count} distinct weeknight recipes for a home cook in Toronto.`,
+    `Return exactly ${count} recipes in the JSON array. Do not return fewer or more.`,
     cuisines,
     `Prompt: ${input.prompt}`,
     servings ? `Servings must be exactly ${servings} for every recipe.` : '',
@@ -134,6 +151,7 @@ function buildPrompt(input) {
     dietaryLine,
     allergyLine,
     avoidLine,
+    preferredLine,
     'Each recipe must include a clear "interesting twist" (e.g., a unique flavor pairing, technique, or ingredient swap).',
     'Favor bold, unexpected flavor pairings that still feel delicious and balanced; aim for a "wow" factor.',
     'Keep each recipe concise: 8-12 ingredients and 5-7 steps maximum.',
@@ -531,7 +549,7 @@ async function callOpenAiChat({
   systemContent = 'You are a helpful culinary assistant that returns only valid JSON.',
 }) {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), OPENAI_TIMEOUT_MS);
+  const timeoutId = setTimeout(() => controller.abort(), NEBIUS_TIMEOUT_MS);
   let response;
   try {
     response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -892,8 +910,14 @@ function recipesMissingRequiredFields(recipes) {
   );
 }
 
+function recipesEmpty(recipes) {
+  return !Array.isArray(recipes) || recipes.length === 0;
+}
+
 function applyRecipeFilters(recipes, options) {
-  let filtered = filterByCuisine(recipes, options.cuisines);
+  let filtered = options.relaxCuisine
+    ? recipes
+    : filterByCuisine(recipes, options.cuisines);
   filtered = filterByDietaryTags(filtered, options.dietaryPreferences);
   filtered = filterByAllergens(filtered, options.allergies);
   if (Number.isFinite(options.servings) && options.servings > 0) {
@@ -949,6 +973,7 @@ function buildRecipeCacheKey({
   maxCookTimeMins,
   dietaryPreferences,
   allergies,
+  preferredIngredients,
 }) {
   const normalizedPrompt = String(prompt ?? '').trim().toLowerCase();
   const normalizedCuisines = Array.isArray(cuisines)
@@ -968,6 +993,9 @@ function buildRecipeCacheKey({
           .map((item) => item.trim().toLowerCase())
           .filter(Boolean)
       : [];
+  const normalizedPreferred = Array.isArray(preferredIngredients)
+    ? preferredIngredients.map((item) => String(item).trim().toLowerCase()).filter(Boolean)
+    : [];
   const keySource = JSON.stringify({
     prompt: normalizedPrompt,
     cuisines: normalizedCuisines.sort(),
@@ -976,6 +1004,7 @@ function buildRecipeCacheKey({
     maxCookTimeMins: normalizedMaxCookTime,
     dietaryPreferences: normalizedDietary.sort(),
     allergies: normalizedAllergies.sort(),
+    preferredIngredients: normalizedPreferred.sort(),
   });
   return crypto.createHash('sha256').update(keySource).digest('hex').slice(0, 20);
 }
@@ -1128,6 +1157,12 @@ async function handleRecipes(req, res, body) {
     ? data.dietaryPreferences.map((pref) => String(pref))
     : [];
   const allergies = data.allergies ? String(data.allergies) : '';
+  const preferredIngredients = Array.isArray(data.preferredIngredients)
+    ? data.preferredIngredients.map((item) => String(item))
+    : [];
+  const excludeTitles = Array.isArray(data.excludeTitles)
+    ? data.excludeTitles.map((title) => String(title))
+    : [];
   const userId = data.userId ? String(data.userId).trim() : '';
   if (!prompt) {
     sendJson(res, 400, { error: 'Prompt is required.' });
@@ -1143,6 +1178,7 @@ async function handleRecipes(req, res, body) {
     maxCookTimeMins,
     dietaryPreferences,
     allergies,
+    preferredIngredients,
   });
   const cachedEntry = recipeCache[cacheKey];
   if (cachedEntry && Array.isArray(cachedEntry.recipes) && cachedEntry.recipes.length > 0) {
@@ -1157,38 +1193,46 @@ async function handleRecipes(req, res, body) {
         await saveRecipeCache(recipeCache);
       }
       await attachRecipeImages(normalizedRecipes, baseUrl);
-      console.log(`[ai:recipes] cache hit recipes=${cachedEntry.recipes.length}`);
+      logWithTs(`[ai:recipes] cache hit recipes=${cachedEntry.recipes.length}`);
       sendJson(res, 200, { recipes: normalizedRecipes, cuisineFallback: false });
       return;
     }
-    console.log('[ai:recipes] cache bypass for same user');
+    logWithTs('[ai:recipes] cache bypass for same user');
   }
 
-  console.log(`[ai:recipes] request start prompt="${prompt.slice(0, 80)}" cuisines=${cuisines.join(',') || 'none'}`);
+  logWithTs(`[ai:recipes] request start prompt="${prompt.slice(0, 80)}" cuisines=${cuisines.join(',') || 'none'}`);
+  logWithTs('[ai:recipes] request payload', {
+    prompt: prompt.slice(0, 240),
+    cuisines,
+    count,
+    servings,
+    maxCookTimeMins,
+    dietaryPreferences,
+    allergies,
+    preferredIngredients,
+    excludeTitles,
+    userId,
+    provider: recipeProvider,
+  });
+  const fullPrompt = buildPrompt({
+    prompt,
+    cuisines,
+    count,
+    servings,
+    maxCookTimeMins,
+    dietaryPreferences,
+    allergies,
+    preferredIngredients,
+  });
+  logWithTs('[ai:recipes] prompt', fullPrompt);
   const chat =
     recipeProvider === 'openai'
       ? await callOpenAiChat({
-          prompt: buildPrompt({
-            prompt,
-            cuisines,
-            count,
-            servings,
-            maxCookTimeMins,
-            dietaryPreferences,
-            allergies,
-          }),
+          prompt: fullPrompt,
           model: OPENAI_RECIPE_MODEL,
         })
       : await callNebiusChat({
-          prompt: buildPrompt({
-            prompt,
-            cuisines,
-            count,
-            servings,
-            maxCookTimeMins,
-            dietaryPreferences,
-            allergies,
-          }),
+          prompt: fullPrompt,
           model: NEBIUS_RECIPE_MODEL,
           maxTokens: 1200,
         });
@@ -1262,7 +1306,11 @@ async function handleRecipes(req, res, body) {
     maxCookTimeMins,
   });
   if (recipesMissingRequiredFields(recipes)) {
-    console.warn('[ai:recipes] missing ingredients/steps in initial parse:', JSON.stringify(recipes));
+    if (recipesEmpty(recipes)) {
+    logWithTs('[ai:recipes] no recipes returned in initial parse');
+    } else {
+      logWithTs('[ai:recipes] missing ingredients/steps in initial parse:', JSON.stringify(recipes));
+    }
     let retryAttempts = 0;
     while (retryAttempts < 2 && recipesMissingRequiredFields(recipes)) {
       const retryChat =
@@ -1276,6 +1324,7 @@ async function handleRecipes(req, res, body) {
                 maxCookTimeMins,
                 dietaryPreferences,
                 allergies,
+                preferredIngredients,
               }),
               model: OPENAI_RECIPE_MODEL,
               temperature: 0.4,
@@ -1292,6 +1341,7 @@ async function handleRecipes(req, res, body) {
                 maxCookTimeMins,
                 dietaryPreferences,
                 allergies,
+                preferredIngredients,
               }),
               model: NEBIUS_RECIPE_MODEL,
               temperature: 0.4,
@@ -1317,10 +1367,14 @@ async function handleRecipes(req, res, body) {
           maxCookTimeMins,
         });
         if (recipesMissingRequiredFields(recipes)) {
-          console.warn(
-            '[ai:recipes] missing ingredients/steps after retry:',
-            JSON.stringify(recipes)
-          );
+          if (recipesEmpty(recipes)) {
+            logWithTs('[ai:recipes] no recipes returned after retry');
+          } else {
+            logWithTs(
+              '[ai:recipes] missing ingredients/steps after retry:',
+              JSON.stringify(recipes)
+            );
+          }
         }
       }
       retryAttempts += 1;
@@ -1340,6 +1394,7 @@ async function handleRecipes(req, res, body) {
         dietaryPreferences,
         allergies,
         avoidTitles,
+        preferredIngredients,
       });
       const followupChat =
         recipeProvider === 'openai'
@@ -1370,6 +1425,7 @@ async function handleRecipes(req, res, body) {
           allergies,
           servings,
           maxCookTimeMins,
+          relaxCuisine: true,
         });
         const unique = followupRecipes.filter(
           (recipe) => !avoidTitles.some((title) => title.toLowerCase() === recipe.title.toLowerCase())
@@ -1394,8 +1450,16 @@ async function handleRecipes(req, res, body) {
     createdAt: nowIso(),
   };
   await saveRecipeCache(recipeCache);
-  console.log(
+  logWithTs(
     `[ai:recipes] success recipes=${recipes.length} cuisineFallback=${cuisineFallback} durationMs=${Date.now() - requestStart}`
+  );
+  logWithTs(
+    '[ai:recipes] recipe details',
+    recipes.map((recipe) => ({
+      title: recipe.title,
+      ingredients: Array.isArray(recipe.ingredients) ? recipe.ingredients.length : 0,
+      steps: Array.isArray(recipe.steps) ? recipe.steps.length : 0,
+    }))
   );
   sendJson(res, 200, { recipes, cuisineFallback });
 }
@@ -1500,7 +1564,7 @@ const server = http.createServer(async (req, res) => {
       try {
         await handleRecipes(req, res, body);
       } catch (error) {
-        console.error('[ai:recipes] failed', error);
+        logWithTs('[ai:recipes] failed', error);
         sendJson(res, 500, { error: error instanceof Error ? error.message : 'Server error.' });
       }
     });

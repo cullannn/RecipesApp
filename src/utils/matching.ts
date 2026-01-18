@@ -94,6 +94,15 @@ export function matchDealToIngredient(deal: DealItem, ingredientName: string): b
   if (dealTokensRaw.some((token) => BLOCKLIST_TOKENS.has(token))) {
     return false;
   }
+  const normalizedDeal = normalizeName(deal.title);
+  const normalizedIngredient = normalizeName(ingredientName);
+  if (normalizedDeal && normalizedIngredient) {
+    const compactDeal = normalizedDeal.replace(/\s+/g, '');
+    const compactIngredient = normalizedIngredient.replace(/\s+/g, '');
+    if (compactDeal.includes(compactIngredient)) {
+      return true;
+    }
+  }
   const dealTokens = filterTokens(dealTokensRaw);
   const ingredientTokens = filterTokens(ingredientTokensRaw);
   if (dealTokens.length === 0 || ingredientTokens.length === 0) {
@@ -126,6 +135,7 @@ type ScoreOptions = {
   dietary?: string[];
   cuisines?: string[];
   prompt?: string;
+  favoriteDealIds?: string[];
 };
 
 function scorePreferenceMatch(recipe: Recipe, preferences?: string[]): number {
@@ -199,10 +209,22 @@ function scorePromptBoost(recipe: Recipe, prompt?: string): number {
 export function scoreRecipe(recipe: Recipe, deals: DealItem[], options?: ScoreOptions): number {
   const matches = getRecipeDealMatches(recipe, deals);
   const matchCount = new Set(matches.map((deal) => deal.id)).size;
+  const favoriteDealIds = options?.favoriteDealIds ?? [];
+  const favoriteMatches = favoriteDealIds.length
+    ? matches.filter((deal) => favoriteDealIds.includes(deal.id)).length
+    : 0;
   const nonDealCount = recipe.ingredients.length - matches.length;
   const savingsScore = scoreDealSavings(matches);
   const preferenceScore = scorePreferenceMatch(recipe, options?.dietary);
   const cuisineScore = scoreCuisineBoost(recipe, options?.cuisines);
   const promptScore = scorePromptBoost(recipe, options?.prompt);
-  return matchCount * 10 + savingsScore + preferenceScore + cuisineScore + promptScore - nonDealCount;
+  return (
+    matchCount * 10 +
+    favoriteMatches * 20 +
+    savingsScore +
+    preferenceScore +
+    cuisineScore +
+    promptScore -
+    nonDealCount
+  );
 }

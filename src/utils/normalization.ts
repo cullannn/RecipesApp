@@ -15,12 +15,33 @@ function stemToken(token: string): string {
   return token;
 }
 
+function applySynonyms(tokens: string[]): string[] {
+  const normalized: string[] = [];
+  for (let i = 0; i < tokens.length; i += 1) {
+    const token = tokens[i];
+    const next = tokens[i + 1];
+    if ((token === 'spring' || token === 'green') && next === 'onion') {
+      normalized.push('green', 'onion');
+      i += 1;
+      continue;
+    }
+    if (token === 'scallion') {
+      normalized.push('green', 'onion');
+      continue;
+    }
+    normalized.push(token);
+  }
+  return normalized;
+}
+
 export function normalizeName(value: string): string {
   const cleaned = stripPunctuation(value.toLowerCase());
-  const tokens = cleaned
+  const tokens = applySynonyms(
+    cleaned
     .split(/\s+/)
     .filter(Boolean)
-    .map(stemToken);
+    .map(stemToken)
+  );
   return tokens.join(' ').trim();
 }
 

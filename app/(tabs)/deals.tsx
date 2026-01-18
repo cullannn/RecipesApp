@@ -16,7 +16,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
-import { TextInput, Button } from 'react-native-paper';
+import { TextInput, Button, Snackbar } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 import { PatternBackground } from '@/components/pattern-background';
@@ -26,6 +26,7 @@ import { useDeals } from '@/src/hooks/useDeals';
 import { useRemoteImage } from '@/src/hooks/useRemoteImage';
 import { useMealPlanStore } from '@/src/state/useMealPlanStore';
 import { usePreferencesStore } from '@/src/state/usePreferencesStore';
+import { useDealsStore } from '@/src/state/useDealsStore';
 import { getStoreDisplayName, normalizeStoreName, resolveStoreLogo, shouldIgnoreStore } from '@/src/utils/storeLogos';
 import { getGtaCityForPostalCode } from '@/src/utils/postalCode';
 
@@ -85,6 +86,11 @@ const FilterItem = memo(function FilterItem({
 const DealCard = memo(function DealCard({
   item,
   onPress,
+  isSaved,
+  onToggleSaved,
+  showDivider,
+  showStore,
+  isFavoriteSection,
 }: {
   item: {
     id: string;
@@ -98,6 +104,11 @@ const DealCard = memo(function DealCard({
     imageUrl?: string;
   };
   onPress?: () => void;
+  isSaved: boolean;
+  onToggleSaved: () => void;
+  showDivider: boolean;
+  showStore: boolean;
+  isFavoriteSection: boolean;
 }) {
   const imageUrl = useRemoteImage(item.title, item.imageUrl ?? null, { kind: 'deal' });
   const buildWasPrice = (price: number) => {
@@ -137,8 +148,22 @@ const DealCard = memo(function DealCard({
     },
     [pressScale]
   );
+  const favoriteScale = useRef(new Animated.Value(1)).current;
+  const animateFavoriteScale = useCallback(
+    (value: number) => {
+      Animated.timing(favoriteScale, {
+        toValue: value,
+        duration: 120,
+        easing: Easing.out(Easing.circle),
+        useNativeDriver: true,
+      }).start();
+    },
+    [favoriteScale]
+  );
   const handlePressIn = useCallback(() => animateCardScale(0.96), [animateCardScale]);
   const handlePressOut = useCallback(() => animateCardScale(1), [animateCardScale]);
+  const handleFavoritePressIn = useCallback(() => animateFavoriteScale(0.9), [animateFavoriteScale]);
+  const handleFavoritePressOut = useCallback(() => animateFavoriteScale(1), [animateFavoriteScale]);
   return (
     <AnimatedPressable
       style={[styles.cardPressable, { transform: [{ scale: pressScale }] }]}
@@ -163,6 +188,9 @@ const DealCard = memo(function DealCard({
             </View>
             <View style={styles.cardText}>
               <Text style={styles.cardTitle}>{item.title}</Text>
+              {showStore ? (
+                <Text style={styles.cardStore}>Store: {getStoreDisplayName(item.store)}</Text>
+              ) : null}
               <Text style={styles.cardMeta}>
                 {priceAvailable ? (
                   hasSavings ? (
@@ -183,8 +211,31 @@ const DealCard = memo(function DealCard({
                 <Text style={styles.cardSavings}>Save {savingsPercent}%</Text>
               ) : null}
             </View>
+            <AnimatedPressable
+              onPress={onToggleSaved}
+              style={styles.favoriteButton}
+              onPressIn={handleFavoritePressIn}
+              onPressOut={handleFavoritePressOut}
+              accessibilityRole="button"
+              accessibilityLabel={isSaved ? 'Remove preferred deal' : 'Add preferred deal'}
+              accessibilityHint="Adds or removes this deal from your preferred list"
+              accessibilityState={{ selected: isSaved }}>
+              <Animated.View style={{ transform: [{ scale: favoriteScale }] }}>
+                <MaterialCommunityIcons
+                  name={
+                    isFavoriteSection
+                      ? 'close-circle-outline'
+                      : isSaved
+                        ? 'clipboard-plus'
+                        : 'clipboard-plus-outline'
+                  }
+                  size={18}
+                  color={isFavoriteSection ? '#B45A5A' : isSaved ? '#1B7F3A' : '#9AA0A6'}
+                />
+              </Animated.View>
+            </AnimatedPressable>
           </View>
-          <View style={styles.cardDivider} />
+          {showDivider ? <View style={styles.cardDivider} /> : null}
         </View>
       </View>
       </View>
@@ -326,6 +377,7 @@ const buildStoreFilterList = (stores: string[], favorites: string[]) => {
 export default function DealsScreen() {
   const { postalCode, favoriteStores } = usePreferencesStore();
   const { isGeneratingPlan } = useMealPlanStore();
+  const { savedDealIds, toggleSavedDeal, pruneSavedDeals } = useDealsStore();
   const [selectedStore, setSelectedStore] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [, startTransition] = useTransition();
@@ -333,7 +385,10 @@ export default function DealsScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchModalVisible, setSearchModalVisible] = useState(false);
   const [selectedDeal, setSelectedDeal] = useState<{ title: string; imageUrl?: string } | null>(null);
+  const [undoDeal, setUndoDeal] = useState<{ id: string; title: string } | null>(null);
+  const [undoVisible, setUndoVisible] = useState(false);
   const chevronAnims = useRef(new Map<string, Animated.Value>());
+  const allDealsQuery = useDeals({ postalCode });
   const dealsQuery = useDeals({
     postalCode,
     stores: selectedStore ? [selectedStore] : undefined,
@@ -341,10 +396,24 @@ export default function DealsScreen() {
   });
 
   const deals = useMemo(
-    () =>
-      (dealsQuery.data ?? []).filter((deal) => !shouldIgnoreStore(deal.store)),
+    () => (dealsQuery.data ?? []).filter((deal) => !shouldIgnoreStore(deal.store)),
     [dealsQuery.data]
   );
+  const allDeals = useMemo(
+    () => (allDealsQuery.data ?? []).filter((deal) => !shouldIgnoreStore(deal.store)),
+    [allDealsQuery.data]
+  );
+  const favoriteDeals = useMemo(() => {
+    if (savedDealIds.length === 0) {
+      return [];
+    }
+    const normalizedSearch = searchQuery.trim().toLowerCase();
+    const base = allDeals.filter((deal) => savedDealIds.includes(deal.id));
+    if (!normalizedSearch) {
+      return base;
+    }
+    return base.filter((deal) => deal.title.toLowerCase().includes(normalizedSearch));
+  }, [allDeals, savedDealIds, searchQuery]);
   const cityLabel = useMemo(
     () => (postalCode ? getGtaCityForPostalCode(postalCode) : null),
     [postalCode]
@@ -428,20 +497,36 @@ export default function DealsScreen() {
     });
   }, [deals, favoriteStores, searchQuery]);
 
-  const sections = useMemo(
-    () =>
-      groupedDeals.map((group) => ({
-        ...group,
-        data: collapsedGroups.has(group.key) ? [] : group.deals,
-      })),
-    [groupedDeals, collapsedGroups]
-  );
+  const sections = useMemo(() => {
+    const baseSections = groupedDeals.map((group) => ({
+      ...group,
+      data: collapsedGroups.has(group.key) ? [] : group.deals,
+    }));
+    if (favoriteDeals.length === 0) {
+      return baseSections;
+    }
+    return [
+      {
+        key: '__favorites__',
+        store: 'Favourited Deals',
+        range: '',
+        deals: favoriteDeals,
+        data: favoriteDeals,
+        isFavorites: true,
+      },
+      ...baseSections,
+    ];
+  }, [groupedDeals, collapsedGroups, favoriteDeals]);
 
   useEffect(() => {
     if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
       UIManager.setLayoutAnimationEnabledExperimental(true);
     }
   }, []);
+
+  useEffect(() => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+  }, [savedDealIds]);
 
   useEffect(() => {
     groupedDeals.forEach((group) => {
@@ -453,6 +538,13 @@ export default function DealsScreen() {
       }
     });
   }, [groupedDeals, collapsedGroups]);
+
+  useEffect(() => {
+    if (!allDealsQuery.data) {
+      return;
+    }
+    pruneSavedDeals(allDealsQuery.data.map((deal) => deal.id));
+  }, [allDealsQuery.data, pruneSavedDeals]);
 
   const toggleGroup = useCallback((key: string) => {
     LayoutAnimation.configureNext({
@@ -522,8 +614,20 @@ export default function DealsScreen() {
     ({
       section,
     }: {
-      section: { key: string; store: string; range: string; data: typeof deals };
+      section: { key: string; store: string; range: string; data: typeof deals; isFavorites?: boolean };
     }) => {
+      if (section.isFavorites) {
+        return (
+          <View style={styles.groupHeaderCard}>
+            <View style={styles.groupHeader}>
+              <View style={styles.groupHeaderRow}>
+                <Text style={styles.groupTitle}>My Preferred Deals of the Week</Text>
+                <View style={styles.groupHeaderSpacer} />
+              </View>
+            </View>
+          </View>
+        );
+      }
       const isCollapsed = collapsedGroups.has(section.key);
       const chevronProgress =
         chevronAnims.current.get(section.key) ?? new Animated.Value(isCollapsed ? 0 : 1);
@@ -574,20 +678,33 @@ export default function DealsScreen() {
     }: {
       item: (typeof deals)[number];
       index: number;
-      section: { data: typeof deals };
+      section: { data: typeof deals; isFavorites?: boolean };
     }) => {
       const isLast = index === section.data.length - 1;
       const isFirst = index === 0;
+      const showDivider = !(section.isFavorites && section.data.length === 1);
+      const isSaved = savedDealIds.includes(item.id);
       return (
         <View style={[styles.groupItemRow, isFirst && styles.groupItemRowFirst, isLast && styles.groupItemRowLast]}>
           <DealCard
             item={item}
             onPress={() => setSelectedDeal({ title: item.title, imageUrl: item.imageUrl })}
+            isSaved={isSaved}
+            onToggleSaved={() => {
+              toggleSavedDeal(item.id);
+              if (section.isFavorites && isSaved) {
+                setUndoDeal({ id: item.id, title: item.title });
+                setUndoVisible(true);
+              }
+            }}
+            showDivider={showDivider}
+            showStore={Boolean(section.isFavorites)}
+            isFavoriteSection={Boolean(section.isFavorites)}
           />
         </View>
       );
     },
-    []
+    [savedDealIds, toggleSavedDeal]
   );
 
   return (
@@ -725,6 +842,22 @@ export default function DealsScreen() {
                 <LoadingDealsSplash />
               </View>
             ) : null}
+            <Snackbar
+              visible={undoVisible}
+              onDismiss={() => setUndoVisible(false)}
+              duration={4000}
+              action={{
+                label: 'Undo',
+                onPress: () => {
+                  if (undoDeal) {
+                    toggleSavedDeal(undoDeal.id);
+                  }
+                  setUndoVisible(false);
+                  setUndoDeal(null);
+                },
+              }}>
+              Removed {undoDeal?.title ?? 'deal'}
+            </Snackbar>
           </View>
         </>
       )}
@@ -1072,6 +1205,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#5F6368',
   },
+  cardStore: {
+    fontSize: 12,
+    color: '#1B7F3A',
+    fontWeight: '600',
+    marginBottom: 2,
+  },
   priceWas: {
     color: '#9AA0A6',
   },
@@ -1113,6 +1252,11 @@ const styles = StyleSheet.create({
   },
   cardText: {
     flex: 1,
+  },
+  favoriteButton: {
+    alignSelf: 'center',
+    padding: 4,
+    marginLeft: 6,
   },
   cardTitle: {
     fontSize: 13,

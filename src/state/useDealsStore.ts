@@ -6,6 +6,7 @@ import { useAuthStore } from './useAuthStore';
 type DealsState = {
   savedDealIds: string[];
   toggleSavedDeal: (dealId: string) => void;
+  pruneSavedDeals: (validIds: string[]) => void;
 };
 
 export const useDealsStore = create<DealsState>()(
@@ -18,6 +19,14 @@ export const useDealsStore = create<DealsState>()(
         set({
           savedDealIds: exists ? current.filter((id) => id !== dealId) : [...current, dealId],
         });
+      },
+      pruneSavedDeals: (validIds) => {
+        const validSet = new Set(validIds);
+        const current = get().savedDealIds;
+        const next = current.filter((id) => validSet.has(id));
+        if (next.length !== current.length) {
+          set({ savedDealIds: next });
+        }
       },
     }),
     {

@@ -18,9 +18,10 @@ import { useGroceryListStore } from '@/src/state/useGroceryListStore';
 import { useMealPlanStore } from '@/src/state/useMealPlanStore';
 import { usePreferencesStore } from '@/src/state/usePreferencesStore';
 import { matchDealToIngredient } from '@/src/utils/matching';
-import { normalizeTokens } from '@/src/utils/normalization';
+import { normalizeName, normalizeTokens } from '@/src/utils/normalization';
 import { getStoreDisplayName, shouldIgnoreStore } from '@/src/utils/storeLogos';
 import { generateRecipesFromPrompt } from '@/src/utils/openai';
+import { useDealsStore } from '@/src/state/useDealsStore';
 
 const cuisineOptions = [
   'Chinese',
@@ -311,6 +312,24 @@ export default function PlanScreen() {
     () => (dealsQuery.data ?? []).filter((deal) => !shouldIgnoreStore(deal.store)),
     [dealsQuery.data]
   );
+  const { savedDealIds } = useDealsStore();
+  const favoriteDealIdsForPlan = useMemo(() => {
+    if (savedDealIds.length === 0 || filteredDeals.length === 0) {
+      return [];
+    }
+    const valid = new Set(filteredDeals.map((deal) => deal.id));
+    return savedDealIds.filter((id) => valid.has(id));
+  }, [filteredDeals, savedDealIds]);
+  const preferredIngredients = useMemo(() => {
+    if (favoriteDealIdsForPlan.length === 0) {
+      return [];
+    }
+    return filteredDeals
+      .filter((deal) => favoriteDealIdsForPlan.includes(deal.id))
+      .map((deal) => deal.title)
+      .filter(Boolean)
+      .slice(0, 6);
+  }, [favoriteDealIdsForPlan, filteredDeals]);
   const pantryCatalog = useMemo(
     () =>
       pantryItems.map((item) => ({
@@ -538,6 +557,10 @@ export default function PlanScreen() {
     setInfo('');
     setIsGeneratingPlan(true);
     setGeneratingMode(mode);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    if (mode === 'full') {
+      setPlan(undefined as unknown as MealPlan);
+    }
     if (!postalCode) {
       setError('Add a postal code in Settings to generate a plan.');
       setIsGeneratingPlan(false);
@@ -559,6 +582,7 @@ export default function PlanScreen() {
           maxCookTimeMins,
           dietaryPreferences,
           allergies,
+          preferredIngredients,
         });
         if (generated.length === 0) {
           setError('No recipes matched that cooking vibe. Try another prompt.');
@@ -566,10 +590,51 @@ export default function PlanScreen() {
           return;
         }
         if (generated.length < mealsRequested) {
-          const generatedIds = new Set(generated.map((recipe) => recipe.id));
-          const fallbackPool = recipes.filter((recipe) => !generatedIds.has(recipe.id));
-          const needed = mealsRequested - generated.length;
-          generated.push(...fallbackPool.slice(0, needed));
+          let merged = [...generated];
+          let attempt = 0;
+          while (merged.length < mealsRequested && attempt < 2) {
+            const needed = mealsRequested - merged.length;
+            const excludeTitles = merged.map((recipe) => recipe.title).filter(Boolean);
+            const { recipes: followup } = await generateRecipesFromPrompt({
+              prompt: aiPrompt.trim(),
+              cuisines: selectedCuisines,
+              count: needed,
+              servings,
+              maxCookTimeMins,
+              dietaryPreferences,
+              allergies,
+              preferredIngredients,
+              excludeTitles,
+            });
+            merged = [...merged, ...followup].filter(
+              (recipe, index, list) =>
+                index ===
+                list.findIndex(
+                  (item) => item.title.toLowerCase().trim() === recipe.title.toLowerCase().trim()
+                )
+            );
+            attempt += 1;
+          }
+          let usedLocalTopUp = false;
+          if (merged.length < mealsRequested) {
+            const existingTitles = new Set(
+              merged.map((recipe) => recipe.title.toLowerCase().trim())
+            );
+            const fallbackPool = recipes.filter(
+              (recipe) => !existingTitles.has(recipe.title.toLowerCase().trim())
+            );
+            const remaining = mealsRequested - merged.length;
+            merged.push(...fallbackPool.slice(0, remaining));
+            usedLocalTopUp = true;
+          }
+          console.log('[plan] ai followup results', {
+            requested: mealsRequested,
+            aiInitial: generated.length,
+            aiFollowup: Math.max(0, merged.length - generated.length),
+            final: Math.min(mealsRequested, merged.length),
+            usedLocalTopUp,
+          });
+          generated.splice(0, generated.length, ...merged.slice(0, mealsRequested));
         }
         setAiRecipes(generated);
         recipesForPlan = generated;
@@ -598,6 +663,7 @@ export default function PlanScreen() {
         deals: filteredDeals,
         pinnedRecipeIds: Array.from(new Set([...pinnedRecipeIds, ...planPinnedIds])),
         favoriteStores,
+        favoriteDealIds: favoriteDealIdsForPlan,
         constraints: {
           dietary: dietaryPreferences,
           cuisineThemes: selectedCuisines,
@@ -605,6 +671,11 @@ export default function PlanScreen() {
           maxCookTimeMins: maxCookTimeMins ?? 60,
           servings,
         },
+      });
+      console.log('[plan] generated recipes count', {
+        requested: mealsRequested,
+        returned: generated.recipes.length,
+        source: aiPrompt.trim() ? 'ai' : 'local',
       });
       setPlan(generated);
       refreshGroceryList(generated);
@@ -633,6 +704,9 @@ export default function PlanScreen() {
       return { deals: [], store: undefined as string | undefined };
     }
     const allDeals = filteredDeals ?? [];
+    const favoriteDeals = favoriteDealIdsForPlan.length
+      ? allDeals.filter((deal) => favoriteDealIdsForPlan.includes(deal.id))
+      : [];
     const ingredientEntries = plan.recipes
       .flatMap((recipe) => recipe.ingredients)
       .map((ingredient) => ({
@@ -649,14 +723,54 @@ export default function PlanScreen() {
       uniqueIngredientKeys.add(key);
       return true;
     });
+    const matchesIngredient = (deal: DealItem, ingredientName: string) => {
+      const normalizedDeal = normalizeName(deal.title);
+      const normalizedIngredient = normalizeName(ingredientName);
+      if (!normalizedDeal || !normalizedIngredient) {
+        return false;
+      }
+      if (normalizedDeal.includes('dried') && !normalizedIngredient.includes('dried')) {
+        return false;
+      }
+      const ingredientTokens = normalizeTokens(ingredientName).filter((token) => token.length > 2);
+      const dealTokens = normalizeTokens(deal.title).filter((token) => token.length > 2);
+      const compactDeal = normalizedDeal.replace(/\s+/g, '');
+      const compactIngredient = normalizedIngredient.replace(/\s+/g, '');
+      if (!normalizedDeal.includes(normalizedIngredient) && !compactDeal.includes(compactIngredient)) {
+        return false;
+      }
+      if (ingredientTokens.length === 1) {
+        const target = ingredientTokens[0];
+        if (!dealTokens.includes(target)) {
+          return false;
+        }
+        const extras = dealTokens.filter((token) => token !== target);
+        if (extras.length > 0 && !extras.every((token) => TOP_SAVINGS_ALLOWED_TOKENS.has(token))) {
+          return false;
+        }
+      }
+      return matchDealToIngredient(deal, ingredientName);
+    };
+    const matchesIngredientRelaxed = (deal: DealItem, ingredientName: string) => {
+      const normalizedDeal = normalizeName(deal.title);
+      const normalizedIngredient = normalizeName(ingredientName);
+      if (!normalizedDeal || !normalizedIngredient) {
+        return false;
+      }
+      if (normalizedDeal.includes('dried') && !normalizedIngredient.includes('dried')) {
+        return false;
+      }
+      const compactDeal = normalizedDeal.replace(/\s+/g, '');
+      const compactIngredient = normalizedIngredient.replace(/\s+/g, '');
+      if (!normalizedDeal.includes(normalizedIngredient) && !compactDeal.includes(compactIngredient)) {
+        return false;
+      }
+      return matchDealToIngredient(deal, ingredientName);
+    };
     const storeCounts = new Map<string, { priced: number; total: number; protein: number }>();
     ingredientList.forEach((ingredient) => {
       const isProtein = ['meat', 'seafood', 'protein'].includes(ingredient.category);
-      const matches = allDeals.filter(
-        (deal) =>
-          matchDealToIngredient(deal, ingredient.name) &&
-          strictMatchTopSavings(deal.title, ingredient.name)
-      );
+      const matches = allDeals.filter((deal) => matchesIngredient(deal, ingredient.name));
       matches.forEach((deal) => {
         const entry = storeCounts.get(deal.store) ?? { priced: 0, total: 0, protein: 0 };
         if (typeof deal.price === 'number' && Number.isFinite(deal.price)) {
@@ -670,6 +784,14 @@ export default function PlanScreen() {
       });
     });
     let fallbackStore: string | undefined;
+    if (favoriteDeals.length > 0) {
+      const favoriteStoreCounts = new Map<string, number>();
+      favoriteDeals.forEach((deal) => {
+        favoriteStoreCounts.set(deal.store, (favoriteStoreCounts.get(deal.store) ?? 0) + 1);
+      });
+      const sortedFavorites = Array.from(favoriteStoreCounts.entries()).sort((a, b) => b[1] - a[1]);
+      fallbackStore = sortedFavorites[0]?.[0];
+    }
     if (storeCounts.size > 0) {
       const sortedStores = Array.from(storeCounts.entries()).sort((a, b) => {
         const proteinDiff = b[1].protein - a[1].protein;
@@ -682,7 +804,7 @@ export default function PlanScreen() {
         }
         return b[1].priced - a[1].priced;
       });
-      fallbackStore = sortedStores[0][0];
+      fallbackStore = fallbackStore ?? sortedStores[0][0];
     }
     const scopedDeals = fallbackStore
       ? allDeals.filter((deal) => deal.store === fallbackStore)
@@ -716,14 +838,83 @@ export default function PlanScreen() {
       'mayo',
       'mayonnaise',
     ];
+    const topSavingsExclusions = [
+      'sauce',
+      'gravy',
+      'marinade',
+      'dip',
+      'salsa',
+      'dressing',
+      'seasoning',
+      'chip',
+      'chips',
+      'crisps',
+      'ramyeon',
+      'ramen',
+      'noodles',
+      'dumpling',
+      'snack',
+      'cookie',
+      'cake',
+      'dorayaki',
+      'juice',
+      'drink',
+      'beverage',
+      'smoothie',
+      'sparkling',
+      'soda',
+      'water',
+      'breeze',
+      'flower',
+      'honeysuckle',
+      'pan',
+      'pot',
+      'skillet',
+      'wok',
+      'baking sheet',
+      'sheet pan',
+      'cookware',
+      'utensil',
+      'knife',
+    ];
+    const spiceLikeExclusions = [
+      'garlic',
+      'ginger',
+      'scallion',
+      'green onion',
+      'spring onion',
+      'onion',
+      'shallot',
+      'chili',
+      'pepper',
+      'cilantro',
+      'coriander',
+      'parsley',
+      'basil',
+      'mint',
+      'thyme',
+      'rosemary',
+      'sage',
+      'dill',
+      'bay leaf',
+      'turmeric',
+      'cumin',
+      'paprika',
+      'cardamom',
+      'clove',
+      'cinnamon',
+    ];
+    const spiceExceptions = ['sprout', 'shoot', 'greens', 'leaf', 'stalk', 'stem'];
     const filteredMatches = scopedDeals.filter((deal) => {
-      const category = deal.category?.toLowerCase() ?? '';
       const title = deal.title.toLowerCase();
       if (pantryStaples.some((staple) => title.includes(staple))) {
         return false;
       }
-      if (category === 'pantry') {
+      if (topSavingsExclusions.some((term) => title.includes(term))) {
         return false;
+      }
+      if (spiceLikeExclusions.some((term) => title.includes(term))) {
+        return spiceExceptions.some((term) => title.includes(term));
       }
       return true;
     });
@@ -735,22 +926,16 @@ export default function PlanScreen() {
       }
       return a.name.localeCompare(b.name);
     });
-    const ingredientMatches = sortedIngredients
-      .map((ingredient) =>
-        filteredMatches.find(
-          (deal) =>
-            matchDealToIngredient(deal, ingredient.name) &&
-            strictMatchTopSavings(deal.title, ingredient.name)
-        )
-      )
-      .filter((deal): deal is DealItem => Boolean(deal));
+    const ingredientMatches = sortedIngredients.flatMap((ingredient) =>
+      filteredMatches.filter((deal) => matchesIngredient(deal, ingredient.name))
+    );
     const uniqueMatches = new Map<string, DealItem>();
     ingredientMatches.forEach((deal) => {
       if (!uniqueMatches.has(deal.id)) {
         uniqueMatches.set(deal.id, deal);
       }
     });
-    const deals = Array.from(uniqueMatches.values())
+    let deals = Array.from(uniqueMatches.values())
       .sort((a, b) => {
         const aCategory = a.category?.toLowerCase() ?? '';
         const bCategory = b.category?.toLowerCase() ?? '';
@@ -774,10 +959,44 @@ export default function PlanScreen() {
           return bPrice - aPrice;
         }
         return a.title.localeCompare(b.title);
-      })
-      .slice(0, 5);
+      });
+    if (deals.length === 0) {
+      const relaxedMatches = sortedIngredients.flatMap((ingredient) =>
+        filteredMatches.filter((deal) => matchesIngredientRelaxed(deal, ingredient.name))
+      );
+      const relaxedUnique = new Map<string, DealItem>();
+      relaxedMatches.forEach((deal) => {
+        if (!relaxedUnique.has(deal.id)) {
+          relaxedUnique.set(deal.id, deal);
+        }
+      });
+      deals = Array.from(relaxedUnique.values()).sort((a, b) => {
+        const aCategory = a.category?.toLowerCase() ?? '';
+        const bCategory = b.category?.toLowerCase() ?? '';
+        const isAProtein = ['meat', 'seafood', 'protein'].includes(aCategory);
+        const isBProtein = ['meat', 'seafood', 'protein'].includes(bCategory);
+        if (isAProtein !== isBProtein) {
+          return isAProtein ? -1 : 1;
+        }
+        const aPrice = Number.isFinite(a.price as number) ? (a.price as number) : null;
+        const bPrice = Number.isFinite(b.price as number) ? (b.price as number) : null;
+        if (aPrice === null && bPrice === null) {
+          return a.title.localeCompare(b.title);
+        }
+        if (aPrice === null) {
+          return 1;
+        }
+        if (bPrice === null) {
+          return -1;
+        }
+        if (bPrice !== aPrice) {
+          return bPrice - aPrice;
+        }
+        return a.title.localeCompare(b.title);
+      });
+    }
     return { deals, store: deals.length > 0 ? fallbackStore : undefined };
-  }, [plan, filteredDeals]);
+  }, [plan, filteredDeals, favoriteDealIdsForPlan]);
 
   const renderTopDealTitle = (title: string) => {
     const quantityRegex = /[, ]+\d+(\.\d+)?(\s*-\s*\d+(\.\d+)?)?\s?(kg|g|lb|oz|l|ml|cl|pcs|ct|count|pack|pk|x)\b/gi;
@@ -997,13 +1216,13 @@ export default function PlanScreen() {
             </Text>
           ) : null}
           {topSavings.deals.length > 0 ? (
-            topSavings.deals.map((deal) => {
+            topSavings.deals.map((deal, index) => {
               const priceAvailable = typeof deal.price === 'number' && Number.isFinite(deal.price);
               const priceText = priceAvailable
                 ? `CAD ${deal.price!.toFixed(2)} / ${deal.unit}`
                 : 'On Sale - See Deals';
               return (
-                <Text key={deal.id} style={styles.planMeta}>
+                <Text key={`${deal.id}-${index}`} style={styles.planMeta}>
                   {renderTopDealTitle(deal.title)} • {priceText}
                 </Text>
               );

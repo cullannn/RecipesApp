@@ -9,6 +9,7 @@ type PlanOptions = {
   pinnedRecipeIds?: string[];
   constraints?: MealPlan['constraints'];
   favoriteStores?: string[];
+  favoriteDealIds?: string[];
 };
 
 function buildPlanId(): string {
@@ -65,8 +66,12 @@ function selectRecipesForDeals(options: {
   dietaryPrefs?: string[];
   cuisineThemes?: string[];
   aiPrompt?: string;
+  favoriteDealIds?: string[];
 }): SelectionResult {
   const { mealsRequested, recipes, deals, pinnedRecipeIds } = options;
+  const favoriteDeals = (options.favoriteDealIds ?? []).length
+    ? deals.filter((deal) => options.favoriteDealIds?.includes(deal.id))
+    : [];
   const normalizedDealIngredients = deals.map((deal) => normalizeName(deal.title)).filter(Boolean);
   const pinned = recipes.filter((recipe) => pinnedRecipeIds.includes(recipe.id));
   const remaining = recipes
@@ -77,11 +82,13 @@ function selectRecipesForDeals(options: {
           dietary: options.dietaryPrefs,
           cuisines: options.cuisineThemes,
           prompt: options.aiPrompt,
+          favoriteDealIds: options.favoriteDealIds,
         }) -
         scoreRecipe(a, deals, {
           dietary: options.dietaryPrefs,
           cuisines: options.cuisineThemes,
           prompt: options.aiPrompt,
+          favoriteDealIds: options.favoriteDealIds,
         });
       if (scoreDiff !== 0) {
         return scoreDiff;
@@ -98,6 +105,8 @@ function selectRecipesForDeals(options: {
   const coveredDealIngredients = new Set<string>();
 
   const hasDealMatch = (recipe: Recipe) => getRecipeMatchedDeals(recipe, deals).size > 0;
+  const hasFavoriteMatch = (recipe: Recipe) =>
+    favoriteDeals.length > 0 && getRecipeMatchedDeals(recipe, favoriteDeals).size > 0;
 
   const addRecipe = (recipe: Recipe) => {
     selected.push(recipe);
@@ -121,8 +130,39 @@ function selectRecipesForDeals(options: {
     }
   }
 
+  const favoriteCandidates = remaining.filter((recipe) => hasFavoriteMatch(recipe));
   const matchingCandidates = remaining.filter((recipe) => hasDealMatch(recipe));
-  const primaryPool = matchingCandidates.length >= mealsRequested ? matchingCandidates : remaining;
+  if (favoriteCandidates.length > 0 && selected.length < mealsRequested) {
+    const seededCount = Math.min(mealsRequested - selected.length, Math.min(2, favoriteCandidates.length));
+    const sortedFavorites = favoriteCandidates
+      .slice()
+      .sort(
+        (a, b) =>
+          scoreRecipe(b, deals, {
+            dietary: options.dietaryPrefs,
+            cuisines: options.cuisineThemes,
+            prompt: options.aiPrompt,
+            favoriteDealIds: options.favoriteDealIds,
+          }) -
+          scoreRecipe(a, deals, {
+            dietary: options.dietaryPrefs,
+            cuisines: options.cuisineThemes,
+            prompt: options.aiPrompt,
+            favoriteDealIds: options.favoriteDealIds,
+          })
+      );
+    sortedFavorites.slice(0, seededCount).forEach((recipe) => {
+      if (!selected.find((existing) => existing.id === recipe.id)) {
+        addRecipe(recipe);
+      }
+    });
+  }
+  const primaryPool =
+    favoriteCandidates.length >= mealsRequested
+      ? favoriteCandidates
+      : matchingCandidates.length >= mealsRequested
+        ? matchingCandidates
+        : remaining;
 
   while (selected.length < mealsRequested && remaining.length > 0) {
     if (primaryPool.length === 0) {
@@ -140,12 +180,20 @@ function selectRecipesForDeals(options: {
       const newDealCoverage = ingredientNames.filter(
         (name) => normalizedDealIngredients.includes(name) && !coveredDealIngredients.has(name)
       ).length;
+      const newFavoriteCoverage =
+        favoriteDeals.length > 0
+          ? ingredientNames.filter((name) =>
+              favoriteDeals.some((deal) => normalizeName(deal.title) === name)
+            ).length
+          : 0;
       const baseScore = scoreRecipe(recipe, deals, {
         dietary: options.dietaryPrefs,
         cuisines: options.cuisineThemes,
         prompt: options.aiPrompt,
+        favoriteDealIds: options.favoriteDealIds,
       });
-      const reuseScore = overlapCount * 2 + newDealCoverage * 3 - newIngredientCount;
+      const reuseScore =
+        overlapCount * 2 + newDealCoverage * 3 + newFavoriteCoverage * 6 - newIngredientCount;
       const candidateScore = baseScore + reuseScore;
       if (candidateScore > bestScore) {
         bestScore = candidateScore;
@@ -167,6 +215,7 @@ function selectRecipesForDeals(options: {
         dietary: options.dietaryPrefs,
         cuisines: options.cuisineThemes,
         prompt: options.aiPrompt,
+        favoriteDealIds: options.favoriteDealIds,
       }),
     0
   );
@@ -183,6 +232,7 @@ function pickBestStore(deals: DealItem[], recipes: Recipe[], options: {
   cuisineThemes?: string[];
   aiPrompt?: string;
   favoriteStores?: string[];
+  favoriteDealIds?: string[];
 }): { store?: string; selection: SelectionResult } {
   if (deals.length === 0) {
     return {
@@ -195,6 +245,7 @@ function pickBestStore(deals: DealItem[], recipes: Recipe[], options: {
         dietaryPrefs: options.dietaryPrefs,
         cuisineThemes: options.cuisineThemes,
         aiPrompt: options.aiPrompt,
+        favoriteDealIds: options.favoriteDealIds,
       }),
     };
   }
@@ -224,6 +275,7 @@ function pickBestStore(deals: DealItem[], recipes: Recipe[], options: {
       dietaryPrefs: options.dietaryPrefs,
       cuisineThemes: options.cuisineThemes,
       aiPrompt: options.aiPrompt,
+      favoriteDealIds: options.favoriteDealIds,
     });
     storeMatchInfo.push({
       store,
@@ -276,6 +328,7 @@ export function generateMealPlan(options: PlanOptions): MealPlan {
     cuisineThemes,
     aiPrompt,
     favoriteStores: options.favoriteStores,
+    favoriteDealIds: options.favoriteDealIds,
   });
 
   return {
