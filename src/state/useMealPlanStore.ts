@@ -98,6 +98,11 @@ export const useMealPlanStore = create<MealPlanState>()(
     {
       name: 'dealchef-meal-plan-v2',
       storage: createUserScopedStorage(() => useAuthStore.getState().userId),
+      onRehydrateStorage: () => (state) => {
+        if (state?.isGeneratingPlan) {
+          state.setIsGeneratingPlan(false);
+        }
+      },
     }
   )
 );

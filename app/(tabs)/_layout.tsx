@@ -66,6 +66,13 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="pantry"
+        options={{
+          title: 'Pantry',
+          tabBarIcon: ({ focused }) => <AnimatedTabIcon size={28} name="bag.fill" focused={focused} />,
+        }}
+      />
+      <Tabs.Screen
         name="settings"
         options={{
           title: 'Settings',

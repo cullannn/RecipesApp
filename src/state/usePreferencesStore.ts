@@ -3,18 +3,44 @@ import { persist } from 'zustand/middleware';
 import { createUserScopedStorage } from './storage';
 import { useAuthStore } from './useAuthStore';
 
+type PantryCategory =
+  | 'Baking Supplies'
+  | 'Canned Goods'
+  | 'Grains & Pasta'
+  | 'Condiments & Sauces'
+  | 'Oils & Vinegars'
+  | 'Herbs & Spices'
+  | 'Others';
+
+type PantryItem = {
+  name: string;
+  category: PantryCategory;
+};
+
+function toTitleCase(value: string): string {
+  return value
+    .toLowerCase()
+    .split(' ')
+    .filter(Boolean)
+    .map((part) => part[0]?.toUpperCase() + part.slice(1))
+    .join(' ');
+}
+
 type PreferencesState = {
   postalCode: string;
   dietaryPreferences: string[];
   allergies: string;
   householdSize?: number;
   favoriteStores: string[];
+  pantryItems: PantryItem[];
   setPostalCode: (postalCode: string) => void;
   setDietaryPreferences: (preferences: string[]) => void;
   setAllergies: (allergies: string) => void;
   setHouseholdSize: (size?: number) => void;
   setFavoriteStores: (stores: string[]) => void;
   toggleFavoriteStore: (store: string) => void;
+  addPantryItem: (item: string, category: PantryCategory) => void;
+  removePantryItem: (item: PantryItem) => void;
 };
 
 export const usePreferencesStore = create<PreferencesState>()(
@@ -25,6 +51,7 @@ export const usePreferencesStore = create<PreferencesState>()(
       allergies: '',
       householdSize: undefined,
       favoriteStores: [],
+      pantryItems: [],
       setPostalCode: (postalCode) => set({ postalCode }),
       setDietaryPreferences: (dietaryPreferences) => set({ dietaryPreferences }),
       setAllergies: (allergies) => set({ allergies }),
@@ -43,10 +70,53 @@ export const usePreferencesStore = create<PreferencesState>()(
               : [...state.favoriteStores, normalized],
           };
         }),
+      addPantryItem: (item, category) =>
+        set((state) => {
+          const normalized = toTitleCase(item.trim());
+          if (!normalized) {
+            return state;
+          }
+          const exists = state.pantryItems.some(
+            (existing) =>
+              existing.name.toLowerCase() === normalized.toLowerCase() &&
+              existing.category === category
+          );
+          if (exists) {
+            return state;
+          }
+          return { pantryItems: [...state.pantryItems, { name: normalized, category }] };
+        }),
+      removePantryItem: (item) =>
+        set((state) => ({
+          pantryItems: state.pantryItems.filter(
+            (existing) =>
+              !(
+                existing.name.toLowerCase() === item.name.toLowerCase() &&
+                existing.category === item.category
+              )
+          ),
+        })),
     }),
     {
       name: 'dealchef-preferences',
       storage: createUserScopedStorage(() => useAuthStore.getState().userId),
+      version: 1,
+      migrate: (state) => {
+        if (!state || typeof state !== 'object') {
+          return state;
+        }
+        const anyState = state as PreferencesState & {
+          pantryItems?: Array<string | PantryItem>;
+        };
+        const rawItems = anyState.pantryItems ?? [];
+        const migratedItems = rawItems.map((item) => {
+          if (typeof item === 'string') {
+            return { name: item, category: 'Others' as PantryCategory };
+          }
+          return item;
+        });
+        return { ...anyState, pantryItems: migratedItems };
+      },
     }
   )
 );

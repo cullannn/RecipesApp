@@ -16,8 +16,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Card, TextInput, Button } from 'react-native-paper';
+import { TextInput, Button } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 import { PatternBackground } from '@/components/pattern-background';
@@ -147,9 +146,9 @@ const DealCard = memo(function DealCard({
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}>
       <View style={styles.cardWrap}>
-        <Card mode="contained" style={styles.card}>
-          <View style={styles.cardClip}>
-            <View style={styles.cardRow}>
+      <View style={styles.card}>
+        <View style={styles.cardClip}>
+          <View style={styles.cardRow}>
             <View style={styles.thumbWrap}>
               <Image
                 key={imageUrl ?? fallbackImage}
@@ -184,16 +183,10 @@ const DealCard = memo(function DealCard({
                 <Text style={styles.cardSavings}>Save {savingsPercent}%</Text>
               ) : null}
             </View>
-            </View>
-            <LinearGradient
-              pointerEvents="none"
-              colors={['rgba(27, 127, 58, 0.35)', 'rgba(27, 127, 58, 0)']}
-              start={{ x: 0.5, y: 1 }}
-              end={{ x: 0.5, y: 0 }}
-              style={styles.cardBottomShade}
-            />
           </View>
-        </Card>
+          <View style={styles.cardDivider} />
+        </View>
+      </View>
       </View>
     </AnimatedPressable>
   );
@@ -1052,9 +1045,8 @@ const styles = StyleSheet.create({
   },
   card: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#BFE7CB',
+    borderRadius: 10,
+    overflow: 'hidden',
     elevation: 0,
     shadowColor: 'transparent',
     shadowOpacity: 0,
@@ -1065,19 +1057,16 @@ const styles = StyleSheet.create({
     position: 'relative',
     marginBottom: 4,
   },
-  cardBottomShade: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    height: 4,
-  },
   cardPressable: {
-    borderRadius: 16,
+    borderRadius: 10,
   },
   cardClip: {
-    borderRadius: 16,
+    borderRadius: 7,
     overflow: 'hidden',
+  },
+  cardDivider: {
+    height: 1,
+    backgroundColor: '#E0E0E0',
   },
   cardMeta: {
     fontSize: 12,

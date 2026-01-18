@@ -7,6 +7,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Pressable, StyleSheet } from 'react-native';
 import { MD3LightTheme, PaperProvider } from 'react-native-paper';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import {
   useFonts,
   Montserrat_300Light,
@@ -113,44 +114,49 @@ export default function RootLayout() {
   return (
     <QueryClientProvider client={queryClient}>
       <PaperProvider theme={materialTheme}>
-        <SafeAreaProvider>
-          <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-            <UserStoreRehydration />
-            <Stack>
-              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-              <Stack.Screen name="login" options={{ headerShown: false }} />
-              <Stack.Screen name="onboarding" options={{ headerShown: false }} />
-              <Stack.Screen
-                name="recipe/[id]"
-                options={{
-                  title: 'Recipe',
-                  headerStyle: { backgroundColor: '#FFFFFF' },
-                  headerTintColor: '#1F1F1F',
-                  headerBackVisible: false,
-                  headerBackTitleVisible: false,
-                  headerBackButtonMenuEnabled: false,
-                  headerLeftContainerStyle: styles.backButtonContainer,
-                  headerLeft: () => (
-                    <Pressable
-                      onPress={() => router.back()}
-                      style={styles.backButton}
-                      android_ripple={{ color: 'transparent' }}>
-                      <MaterialCommunityIcons name="arrow-left" size={22} color="#1B7F3A" />
-                    </Pressable>
-                  ),
-                }}
-              />
-              <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
-            </Stack>
-            <StatusBar style="dark" />
-          </ThemeProvider>
-        </SafeAreaProvider>
+        <GestureHandlerRootView style={styles.gestureRoot}>
+          <SafeAreaProvider>
+            <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+              <UserStoreRehydration />
+              <Stack>
+                <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                <Stack.Screen name="login" options={{ headerShown: false }} />
+                <Stack.Screen name="onboarding" options={{ headerShown: false }} />
+                <Stack.Screen
+                  name="recipe/[id]"
+                  options={{
+                    title: 'Recipe',
+                    headerStyle: { backgroundColor: '#FFFFFF' },
+                    headerTintColor: '#1F1F1F',
+                    headerBackVisible: false,
+                    headerBackTitleVisible: false,
+                    headerBackButtonMenuEnabled: false,
+                    headerLeftContainerStyle: styles.backButtonContainer,
+                    headerLeft: () => (
+                      <Pressable
+                        onPress={() => router.back()}
+                        style={styles.backButton}
+                        android_ripple={{ color: 'transparent' }}>
+                        <MaterialCommunityIcons name="arrow-left" size={22} color="#1B7F3A" />
+                      </Pressable>
+                    ),
+                  }}
+                />
+                <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
+              </Stack>
+              <StatusBar style="dark" />
+            </ThemeProvider>
+          </SafeAreaProvider>
+        </GestureHandlerRootView>
       </PaperProvider>
     </QueryClientProvider>
   );
 }
 
 const styles = StyleSheet.create({
+  gestureRoot: {
+    flex: 1,
+  },
   backButtonContainer: {
     backgroundColor: 'transparent',
     paddingLeft: 12,

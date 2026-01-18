@@ -2,8 +2,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, Easing, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Card, IconButton, Snackbar, TextInput, Button } from 'react-native-paper';
+import { IconButton, Snackbar, TextInput, Button } from 'react-native-paper';
 import { router } from 'expo-router';
 
 import { PatternBackground } from '@/components/pattern-background';
@@ -270,54 +269,49 @@ const RecipeListItem = memo(function RecipeListItem({
       onPressIn={() => animateScale(0.96)}
       onPressOut={() => animateScale(1)}
       accessibilityRole="button">
-      <Card mode="contained" style={styles.card}>
-        <View style={styles.cardClip}>
-          <View style={styles.coverWrap}>
-            <Image
-              key={imageUrl ?? fallbackImage}
-              source={{ uri: imageUrl ?? fallbackImage }}
-              style={styles.cover}
-              contentFit="cover"
-              cachePolicy="none"
-            />
-            {isPlaceholder ? (
-              <Animated.View style={[styles.imageShimmer, { opacity: shimmerOpacity }]} />
-            ) : null}
-            <IconButton
-              icon="close"
-              size={16}
-              onPress={() => onRemove(item.id, dateKey, item)}
-              style={styles.removeButton}
-              accessibilityLabel="Remove recipe from history"
-            />
-          </View>
-          <Card.Content style={styles.cardContent}>
-            <View style={styles.cardContentRow}>
-              <View style={styles.cardTextBlock}>
-                <Text style={styles.cardTitle}>{item.title}</Text>
-                <Text style={styles.cardMeta}>
-                  {item.cookTimeMins} mins • Serves {item.servings}
-                </Text>
-              </View>
+      <View style={styles.cardWrap}>
+        <View style={styles.card}>
+          <View style={styles.cardClip}>
+            <View style={styles.coverWrap}>
+              <Image
+                key={imageUrl ?? fallbackImage}
+                source={{ uri: imageUrl ?? fallbackImage }}
+                style={styles.cover}
+                contentFit="cover"
+                cachePolicy="none"
+              />
+              {isPlaceholder ? (
+                <Animated.View style={[styles.imageShimmer, { opacity: shimmerOpacity }]} />
+              ) : null}
               <IconButton
-                icon="chevron-right"
-                size={26}
-                onPress={() => router.push(`/recipe/${item.id}`)}
-                style={styles.actionButton}
-                iconColor="#1B7F3A"
-                accessibilityLabel="View recipe details"
+                icon="close"
+                size={16}
+                onPress={() => onRemove(item.id, dateKey, item)}
+                style={styles.removeButton}
+                accessibilityLabel="Remove recipe from history"
               />
             </View>
-          </Card.Content>
-          <LinearGradient
-            pointerEvents="none"
-            colors={['rgba(27, 127, 58, 0.35)', 'rgba(27, 127, 58, 0)']}
-            start={{ x: 0.5, y: 1 }}
-            end={{ x: 0.5, y: 0 }}
-            style={styles.cardBottomShade}
-          />
+            <View style={styles.cardContent}>
+              <View style={styles.cardContentRow}>
+                <View style={styles.cardTextBlock}>
+                  <Text style={styles.cardTitle}>{item.title}</Text>
+                  <Text style={styles.cardMeta}>
+                    {item.cookTimeMins} mins • Serves {item.servings}
+                  </Text>
+                </View>
+                <IconButton
+                  icon="chevron-right"
+                  size={26}
+                  onPress={() => router.push(`/recipe/${item.id}`)}
+                  style={styles.actionButton}
+                  iconColor="#1B7F3A"
+                  accessibilityLabel="View recipe details"
+                />
+              </View>
+            </View>
+          </View>
         </View>
-      </Card>
+      </View>
     </AnimatedPressable>
   );
 });
@@ -408,24 +402,28 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     marginTop: 12,
   },
-  card: {
+  cardWrap: {
     marginBottom: 12,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#BFE7CB',
-    shadowColor: 'transparent',
-    shadowOpacity: 0,
-    shadowRadius: 0,
-    shadowOffset: { width: 0, height: 0 },
-    elevation: 0,
+    borderRadius: 10,
+    shadowColor: '#7CCB93',
+    shadowOpacity: 0.45,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 6,
   },
-  cardPressable: {
-    borderRadius: 16,
+  card: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#7CCB93',
     overflow: 'hidden',
   },
+  cardPressable: {
+    borderRadius: 10,
+    overflow: 'visible',
+  },
   cardClip: {
-    borderRadius: 16,
+    borderRadius: 7,
     overflow: 'hidden',
     position: 'relative',
   },
@@ -439,8 +437,8 @@ const styles = StyleSheet.create({
   cover: {
     width: '100%',
     height: 140,
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
+    borderTopLeftRadius: 7,
+    borderTopRightRadius: 7,
   },
   cardContent: {
     padding: 12,
@@ -481,13 +479,6 @@ const styles = StyleSheet.create({
   cardMeta: {
     fontSize: 12,
     color: '#5F6368',
-  },
-  cardBottomShade: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    height: 4,
   },
   searchModalBackdrop: {
     flex: 1,

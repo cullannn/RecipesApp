@@ -82,7 +82,7 @@ export default function SettingsScreen() {
         </View>
 
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>Your Kitchen Settings</Text>
+          <Text style={styles.cardTitle}>My Kitchen Settings</Text>
           <View style={styles.section}>
             <Text style={styles.label}>Postal code</Text>
             <Text style={styles.value}>{postalCode ? formatPostalCode(postalCode) : 'Not set'}</Text>
@@ -139,6 +139,7 @@ export default function SettingsScreen() {
             Edit preferences
           </Button>
         </View>
+
       </View>
     </SafeAreaView>
   );

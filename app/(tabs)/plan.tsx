@@ -2,8 +2,9 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, Easing, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Button, Card, Chip, IconButton, Snackbar, TextInput } from 'react-native-paper';
+import { Button, Chip, IconButton, Snackbar, TextInput } from 'react-native-paper';
+import { Slider } from 'react-native-awesome-slider';
+import { useSharedValue } from 'react-native-reanimated';
 import { router } from 'expo-router';
 
 import { useDeals } from '@/src/hooks/useDeals';
@@ -21,7 +22,6 @@ import { normalizeTokens } from '@/src/utils/normalization';
 import { getStoreDisplayName, shouldIgnoreStore } from '@/src/utils/storeLogos';
 import { generateRecipesFromPrompt } from '@/src/utils/openai';
 
-const mealOptions = [1, 3, 5, 7];
 const cuisineOptions = [
   'Chinese',
   'Thai',
@@ -89,6 +89,51 @@ function strictMatchTopSavings(dealTitle: string, ingredientName: string): boole
   }
   return extras.every((token) => TOP_SAVINGS_ALLOWED_TOKENS.has(token));
 }
+
+function normalizePantryName(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9 ]/g, '').trim();
+}
+
+function canonicalizePantryName(value: string): string {
+  const normalized = normalizePantryName(value);
+  const tokens = normalized
+    .split(' ')
+    .filter((token) => token && !PANTRY_IGNORE_TOKENS.has(token));
+  const cleaned = tokens.join(' ');
+  const simplified = cleaned || normalized;
+  if (simplified === 'vegetable oil' || simplified === 'cooking oil') {
+    return 'cooking oil';
+  }
+  return simplified;
+}
+
+const PANTRY_IGNORE_TOKENS = new Set([
+  'cooked',
+  'fresh',
+  'frozen',
+  'chopped',
+  'minced',
+  'sliced',
+  'diced',
+  'ground',
+  'shredded',
+  'grated',
+  'crushed',
+  'peeled',
+  'trimmed',
+  'boneless',
+  'skinless',
+  'small',
+  'large',
+  'medium',
+  'extra',
+  'virgin',
+  'low',
+  'fat',
+  'unsalted',
+  'salted',
+  'organic',
+]);
 
 const fallbackImage =
   'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=800&q=80';
@@ -184,67 +229,62 @@ const RecipeCard = memo(function RecipeCard({
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
       accessibilityRole="button">
-      <Card mode="contained" style={styles.planCard}>
-        <View style={styles.planCardClip}>
-          <View style={styles.coverWrap}>
-            <Image
-              key={imageUrl ?? fallbackImage}
-              source={{ uri: imageUrl ?? fallbackImage }}
-              style={styles.cover}
-              contentFit="cover"
-              cachePolicy="none"
-            />
-            {isPlaceholder ? (
-              <>
-                <Animated.View style={[styles.imageShimmer, { opacity: shimmerOpacity }]} />
-                <Image
-                  source={require('../../assets/logos/app-logo/forkcast-logo-transparent.png')}
-                  style={[styles.coverLogoOverlay, { opacity: 0.95 }]}
-                  contentFit="contain"
-                  tintColor="#FFFFFF"
-                />
-              </>
-            ) : null}
-            {onRemove ? (
-              <IconButton
-                icon="close"
-                size={18}
-                onPress={handleRemove}
-                style={styles.removeButton}
-                accessibilityLabel="Remove recipe from plan"
+      <View style={styles.planCardWrap}>
+        <View style={styles.planCard}>
+          <View style={styles.planCardClip}>
+            <View style={styles.coverWrap}>
+              <Image
+                key={imageUrl ?? fallbackImage}
+                source={{ uri: imageUrl ?? fallbackImage }}
+                style={styles.cover}
+                contentFit="cover"
+                cachePolicy="none"
               />
-            ) : null}
+              {isPlaceholder ? (
+                <>
+                  <Animated.View style={[styles.imageShimmer, { opacity: shimmerOpacity }]} />
+                  <Image
+                    source={require('../../assets/logos/app-logo/forkcast-logo-transparent.png')}
+                    style={[styles.coverLogoOverlay, { opacity: 0.95 }]}
+                    contentFit="contain"
+                    tintColor="#FFFFFF"
+                  />
+                </>
+              ) : null}
+              {onRemove ? (
+                <IconButton
+                  icon="close"
+                  size={18}
+                  onPress={handleRemove}
+                  style={styles.removeButton}
+                  accessibilityLabel="Remove recipe from plan"
+                />
+              ) : null}
+            </View>
+            <View style={styles.planCardContent}>
+              <Text style={styles.planTitle}>
+                {index + 1}. {recipe.title}
+              </Text>
+              <Text style={styles.planMeta}>
+                {recipe.cookTimeMins} mins • Serves {servingsTarget ?? recipe.servings}
+              </Text>
+              <Text style={styles.planMetaTitle}>Ingredients</Text>
+              {recipe.ingredients.map((ingredient, ingredientIndex) => {
+                const scaled = formatScaledQuantity(
+                  ingredient.quantity,
+                  ingredient.unit,
+                  servingsTarget ? servingsTarget / recipe.servings : 1
+                );
+                return (
+                  <Text key={`${recipe.id}-ingredient-${ingredientIndex}`} style={styles.planMeta}>
+                    {scaled} <Text style={styles.ingredientName}>{ingredient.name}</Text>
+                  </Text>
+                );
+              })}
+            </View>
           </View>
-          <Card.Content style={styles.planCardContent}>
-            <Text style={styles.planTitle}>
-              {index + 1}. {recipe.title}
-            </Text>
-            <Text style={styles.planMeta}>
-              {recipe.cookTimeMins} mins • Serves {servingsTarget ?? recipe.servings}
-            </Text>
-            <Text style={styles.planMetaTitle}>Ingredients</Text>
-            {recipe.ingredients.map((ingredient, ingredientIndex) => {
-              const scaled = formatScaledQuantity(
-                ingredient.quantity,
-                ingredient.unit,
-                servingsTarget ? servingsTarget / recipe.servings : 1
-              );
-              return (
-                <Text key={`${recipe.id}-ingredient-${ingredientIndex}`} style={styles.planMeta}>
-                  {scaled} <Text style={styles.ingredientName}>{ingredient.name}</Text>
-                </Text>
-              );
-            })}
-          </Card.Content>
-          <LinearGradient
-            pointerEvents="none"
-            colors={['rgba(27, 127, 58, 0.35)', 'rgba(27, 127, 58, 0)']}
-            start={{ x: 0.5, y: 1 }}
-            end={{ x: 0.5, y: 0 }}
-            style={styles.planCardBottomShade}
-          />
         </View>
-      </Card>
+      </View>
     </AnimatedPressable>
   );
 });
@@ -264,12 +304,39 @@ function formatScaledQuantity(
 
 export default function PlanScreen() {
   const recipes = useRecipes();
-  const { postalCode, dietaryPreferences, allergies, householdSize, favoriteStores } =
+  const { postalCode, dietaryPreferences, allergies, householdSize, favoriteStores, pantryItems } =
     usePreferencesStore();
   const dealsQuery = useDeals({ postalCode });
   const filteredDeals = useMemo(
     () => (dealsQuery.data ?? []).filter((deal) => !shouldIgnoreStore(deal.store)),
     [dealsQuery.data]
+  );
+  const pantryCatalog = useMemo(
+    () =>
+      pantryItems.map((item) => ({
+        name: canonicalizePantryName(item.name),
+        raw: item.name,
+      })),
+    [pantryItems]
+  );
+
+  const pantryMatches = useCallback(
+    (name: string) => {
+      const canonical = canonicalizePantryName(name);
+      if (!canonical) {
+        return false;
+      }
+      return pantryCatalog.some((pantry) => {
+        if (!pantry.name) {
+          return false;
+        }
+        if (pantry.name === canonical) {
+          return true;
+        }
+        return pantry.name.includes(canonical) || canonical.includes(pantry.name);
+      });
+    },
+    [pantryCatalog]
   );
   const { items: groceryItems, planId, setItems, toggleChecked } = useGroceryListStore();
   const {
@@ -296,6 +363,27 @@ export default function PlanScreen() {
 
   const [maxCookInput, setMaxCookInput] = useState('');
   const [maxCookTouched, setMaxCookTouched] = useState(false);
+  const [mealsDraft, setMealsDraft] = useState(mealsRequested);
+  const sliderProgress = useSharedValue(mealsRequested);
+  const sliderMin = useSharedValue(1);
+  const sliderMax = useSharedValue(14);
+  const handleMealsChange = useCallback(
+    (value: number) => {
+      const rounded = Math.round(value);
+      sliderProgress.value = rounded;
+      setMealsDraft(rounded);
+    },
+    [sliderProgress]
+  );
+  const handleMealsComplete = useCallback(
+    (value: number) => {
+      const rounded = Math.round(value);
+      sliderProgress.value = rounded;
+      setMealsDraft(rounded);
+      setMealsRequested(rounded);
+    },
+    [setMealsRequested, sliderProgress]
+  );
   const [servingsInput, setServingsInput] = useState('');
   const [servingsTouched, setServingsTouched] = useState(false);
   const [error, setError] = useState('');
@@ -337,6 +425,10 @@ export default function PlanScreen() {
       return;
     }
   }, [servings, householdSize, setServings, servingsTouched, maxCookTouched]);
+  useEffect(() => {
+    sliderProgress.value = mealsRequested;
+    setMealsDraft(mealsRequested);
+  }, [mealsRequested, sliderProgress]);
 
   const effectiveServings = servings && servings > 0 ? servings : undefined;
   const recentRecipeIds = useMemo(() => {
@@ -395,10 +487,13 @@ export default function PlanScreen() {
         : filteredDeals;
       const next = buildGroceryList(planToUse, scopedDeals);
       const checkedMap = new Map(groceryItems.map((item) => [item.id, item.checked]));
-      const merged = next.map((item) => ({
-        ...item,
-        checked: checkedMap.get(item.id) ?? item.checked,
-      }));
+      const merged = next.map((item) => {
+        const pantryChecked = pantryMatches(item.name);
+        return {
+          ...item,
+          checked: pantryChecked || (checkedMap.get(item.id) ?? item.checked),
+        };
+      });
       const existingMap = new Map(groceryItems.map((item) => [item.id, item]));
       const hasChanges =
         planId !== planToUse.id ||
@@ -423,28 +518,39 @@ export default function PlanScreen() {
       }
       setItems(merged, planToUse.id);
     },
-    [filteredDeals, groceryItems, planId, setItems]
+    [filteredDeals, groceryItems, pantryMatches, planId, setItems]
   );
 
+  const orderedGroceryItems = useMemo(() => {
+    if (!groceryItems.length) {
+      return groceryItems;
+    }
+    return [...groceryItems].sort((a, b) => {
+      if (a.checked === b.checked) {
+        return 0;
+      }
+      return a.checked ? 1 : -1;
+    });
+  }, [groceryItems]);
+
   const handleGeneratePlan = async (mode: 'update' | 'full' = 'update') => {
-    if (!postalCode) {
-      setError('Add a postal code in Settings to generate a plan.');
-      setInfo('');
-      return;
-    }
-    if (aiPrompt.trim() && dealsQuery.isLoading) {
-      setError('Deals are still loading. Try again in a moment.');
-      setInfo('');
-      return;
-    }
     setError('');
     setInfo('');
     setIsGeneratingPlan(true);
     setGeneratingMode(mode);
-    let recipesForPlan = recipes;
-    let planPinnedIds: string[] = [];
-    if (aiPrompt.trim()) {
-      try {
+    if (!postalCode) {
+      setError('Add a postal code in Settings to generate a plan.');
+      setIsGeneratingPlan(false);
+      setGeneratingMode(null);
+      return;
+    }
+    if (aiPrompt.trim() && dealsQuery.isLoading) {
+      setInfo('Deals are still loading. Plan will generate without them for now.');
+    }
+    try {
+      let recipesForPlan = recipes;
+      let planPinnedIds: string[] = [];
+      if (aiPrompt.trim()) {
         const { recipes: generated, cuisineFallback } = await generateRecipesFromPrompt({
           prompt: aiPrompt.trim(),
           cuisines: selectedCuisines,
@@ -457,8 +563,6 @@ export default function PlanScreen() {
         if (generated.length === 0) {
           setError('No recipes matched that cooking vibe. Try another prompt.');
           setInfo('');
-          setIsGeneratingPlan(false);
-          setGeneratingMode(null);
           return;
         }
         if (generated.length < mealsRequested) {
@@ -472,53 +576,52 @@ export default function PlanScreen() {
         if (cuisineFallback && selectedCuisines.length > 0) {
           setInfo('AI used your prompt but could not guarantee cuisine tags.');
         }
-      } catch (err) {
-        const message = err instanceof Error ? err.message : 'Failed to generate AI recipes.';
-        setError(message);
+      } else if (aiRecipes.length > 0) {
+        setAiRecipes([]);
         setInfo('');
-        setIsGeneratingPlan(false);
-        setGeneratingMode(null);
-        return;
       }
-    } else if (aiRecipes.length > 0) {
-      setAiRecipes([]);
+      if (mode === 'update' && plan?.recipes?.length) {
+        planPinnedIds = plan.recipes.map((item) => item.id);
+        const pinnedSet = new Set(planPinnedIds);
+        recipesForPlan = [
+          ...plan.recipes,
+          ...recipesForPlan.filter(
+            (item) => !pinnedSet.has(item.id) && !recentRecipeIds.has(item.id)
+          ),
+        ];
+      } else {
+        recipesForPlan = recipesForPlan.filter((item) => !recentRecipeIds.has(item.id));
+      }
+      const generated = generateMealPlan({
+        mealsRequested,
+        recipes: recipesForPlan,
+        deals: filteredDeals,
+        pinnedRecipeIds: Array.from(new Set([...pinnedRecipeIds, ...planPinnedIds])),
+        favoriteStores,
+        constraints: {
+          dietary: dietaryPreferences,
+          cuisineThemes: selectedCuisines,
+          aiPrompt,
+          maxCookTimeMins: maxCookTimeMins ?? 60,
+          servings,
+        },
+      });
+      setPlan(generated);
+      refreshGroceryList(generated);
+      addHistoryEntry({
+        id: generated.id,
+        createdAt: generated.createdAt,
+        recipes: generated.recipes,
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to generate AI recipes.';
+      setError(message);
       setInfo('');
+      return;
+    } finally {
+      setIsGeneratingPlan(false);
+      setGeneratingMode(null);
     }
-    if (mode === 'update' && plan?.recipes?.length) {
-      planPinnedIds = plan.recipes.map((item) => item.id);
-      const pinnedSet = new Set(planPinnedIds);
-      recipesForPlan = [
-        ...plan.recipes,
-        ...recipesForPlan.filter(
-          (item) => !pinnedSet.has(item.id) && !recentRecipeIds.has(item.id)
-        ),
-      ];
-    } else {
-      recipesForPlan = recipesForPlan.filter((item) => !recentRecipeIds.has(item.id));
-    }
-    const generated = generateMealPlan({
-      mealsRequested,
-      recipes: recipesForPlan,
-      deals: filteredDeals,
-      pinnedRecipeIds: Array.from(new Set([...pinnedRecipeIds, ...planPinnedIds])),
-      favoriteStores,
-      constraints: {
-        dietary: dietaryPreferences,
-        cuisineThemes: selectedCuisines,
-        aiPrompt,
-        maxCookTimeMins: maxCookTimeMins ?? 60,
-        servings,
-      },
-    });
-    setPlan(generated);
-    refreshGroceryList(generated);
-    addHistoryEntry({
-      id: generated.id,
-      createdAt: generated.createdAt,
-      recipes: generated.recipes,
-    });
-    setIsGeneratingPlan(false);
-    setGeneratingMode(null);
   };
 
   useEffect(() => {
@@ -763,22 +866,34 @@ export default function PlanScreen() {
       <View style={styles.mealPrefsCard}>
         <Text style={styles.sectionTitle}>Meal Preferences</Text>
 
-        <Text style={styles.label}>Number of meals</Text>
-        <View style={styles.optionRow}>
-          {mealOptions.map((count) => (
-            <Chip
-              key={count}
-              selected={mealsRequested === count}
-              onPress={() => setMealsRequested(count)}
-              style={[
-                styles.optionChip,
-                mealsRequested === count && styles.optionChipSelected,
-              ]}
-              selectedColor="#1F1F1F">
-            {count}
-          </Chip>
-        ))}
-      </View>
+        <Text style={styles.label}># of Meals this week</Text>
+        <View style={styles.mealSliderRow}>
+          <Slider
+            style={styles.mealSlider}
+            progress={sliderProgress}
+            minimumValue={sliderMin}
+            maximumValue={sliderMax}
+            steps={13}
+            forceSnapToStep
+            stepTimingOptions={false}
+            onValueChange={handleMealsChange}
+            onSlidingComplete={handleMealsComplete}
+            sliderHeight={4}
+            renderBubble={() => null}
+            renderMark={() => null}
+            markWidth={0}
+            theme={{
+              minimumTrackTintColor: '#1B7F3A',
+              maximumTrackTintColor: '#D0D5DA',
+            }}
+            thumbWidth={32}
+            renderThumb={() => (
+              <View style={styles.mealThumb}>
+                <Text style={styles.mealThumbText}>{mealsDraft}</Text>
+              </View>
+            )}
+          />
+        </View>
 
         <View style={styles.fieldRow}>
           <View style={styles.field}>
@@ -786,6 +901,7 @@ export default function PlanScreen() {
             <TextInput
               mode="outlined"
               style={styles.input}
+              contentStyle={styles.inputContent}
               value={maxCookInput}
               onChangeText={handleMaxCookChange}
               keyboardType="number-pad"
@@ -799,6 +915,7 @@ export default function PlanScreen() {
             <TextInput
               mode="outlined"
               style={styles.input}
+              contentStyle={styles.inputContent}
               value={servingsInput}
               onChangeText={handleServingsChange}
               keyboardType="number-pad"
@@ -821,6 +938,7 @@ export default function PlanScreen() {
                   selected={active}
                   onPress={() => toggleCuisine(option)}
                   style={[styles.chip, active && styles.chipSelected]}
+                  textStyle={styles.chipText}
                   selectedColor="#1F1F1F">
                   {option}
                 </Chip>
@@ -834,9 +952,10 @@ export default function PlanScreen() {
           <TextInput
             mode="outlined"
             style={[styles.input, styles.promptInput]}
+            contentStyle={styles.promptInputContent}
             value={aiPrompt}
             onChangeText={setAiPrompt}
-          placeholder="e.g., asian italian fusion"
+            placeholder="e.g., asian italian fusion"
             multiline
             textColor="#5F6368"
             placeholderTextColor="#B0B6BC"
@@ -848,8 +967,9 @@ export default function PlanScreen() {
             mode="contained"
             onPress={() => handleGeneratePlan('update')}
             loading={isGeneratingPlan && generatingMode === 'update'}
-            disabled={isGeneratingPlan || !canUpdatePlan}
-            style={styles.primaryButton}>
+            disabled={isGeneratingPlan || !canUpdatePlan || !(plan?.recipes?.length ?? 0)}
+            style={styles.primaryButton}
+            labelStyle={styles.buttonLabel}>
             {plan ? 'Update plan' : 'Generate plan'}
           </Button>
           <Button
@@ -859,7 +979,8 @@ export default function PlanScreen() {
             disabled={isGeneratingPlan}
             buttonColor="#1B7F3A"
             textColor="#FFFFFF"
-            style={styles.secondaryButton}>
+            style={styles.secondaryButton}
+            labelStyle={styles.buttonLabel}>
             New plan
           </Button>
         </View>
@@ -893,7 +1014,7 @@ export default function PlanScreen() {
         </View>
       )}
 
-      <View style={styles.planBlock}>
+      <View style={[styles.planBlock, styles.planBlockTight]}>
         <View style={styles.planSection}>
           <Text style={styles.sectionTitle}>Your Curated Recipes</Text>
           {effectiveServings ? (
@@ -926,9 +1047,10 @@ export default function PlanScreen() {
       {plan?.recipes.length ? (
         <View style={styles.planBlock}>
           <Text style={styles.sectionTitle}>Grocery List</Text>
-          {groceryItems.length ? (
-            groceryItems.map((item, index) => {
-              const isLast = index === groceryItems.length - 1;
+          {orderedGroceryItems.length ? (
+            orderedGroceryItems.map((item, index) => {
+              const isLast = index === orderedGroceryItems.length - 1;
+              const pantryChecked = pantryMatches(item.name);
               const dealStore = item.matchedDeal?.store;
               const dealStoreLabel = dealStore ? getStoreDisplayName(dealStore) : null;
               const dealPrice = typeof item.matchedDeal?.price === 'number' ? `$${item.matchedDeal!.price.toFixed(2)}` : null;
@@ -950,6 +1072,7 @@ export default function PlanScreen() {
                   <View style={styles.groceryText}>
                     <Text style={[styles.groceryName, item.checked && styles.groceryChecked]}>
                       {item.name}
+                      {item.checked && pantryChecked ? ' (In Pantry)' : ''}
                     </Text>
                     <Text style={styles.groceryMeta}>
                       Buy: {item.totalQuantity}
@@ -1025,19 +1148,37 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 20,
     fontWeight: '700',
-    marginBottom: 6,
+    marginBottom: 2,
     color: '#1F1F1F',
   },
   subtitle: {
-    fontSize: 13,
+    fontSize: 12,
     color: '#5F6368',
     marginBottom: 16,
+    fontWeight: '600',
   },
-  optionRow: {
+  mealSliderRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
+    alignItems: 'center',
+    gap: 6,
     marginBottom: 16,
+  },
+  mealSlider: {
+    flex: 1,
+    height: 36,
+  },
+  mealThumb: {
+    width: 32,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#1B7F3A',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  mealThumbText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
   fieldRow: {
     flexDirection: 'row',
@@ -1050,24 +1191,34 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   label: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#5F6368',
     marginBottom: 6,
+    fontWeight: '600',
   },
   input: {
     borderWidth: 1,
     borderColor: '#E0E0E0',
     borderRadius: 10,
     paddingHorizontal: 12,
-    paddingVertical: 6,
-    height: 40,
+    paddingVertical: 4,
+    height: 34,
     backgroundColor: '#FFFFFF',
     width: '100%',
   },
+  inputContent: {
+    fontSize: 12,
+  },
   promptInput: {
-    minHeight: 70,
+    height: 56,
     textAlignVertical: 'top',
     borderRadius: 14,
+  },
+  promptInputContent: {
+    fontSize: 12,
+    lineHeight: 16,
+    paddingTop: 6,
+    paddingBottom: 6,
   },
   chipRow: {
     flexDirection: 'row',
@@ -1080,11 +1231,8 @@ const styles = StyleSheet.create({
   chipSelected: {
     backgroundColor: '#D8EFDF',
   },
-  optionChip: {
-    backgroundColor: '#F1F3F4',
-  },
-  optionChipSelected: {
-    backgroundColor: '#D8EFDF',
+  chipText: {
+    fontSize: 11,
   },
   placeholderText: {
     fontSize: 13,
@@ -1098,10 +1246,13 @@ const styles = StyleSheet.create({
     flex: 1,
     borderRadius: 10,
   },
+  buttonLabel: {
+    fontSize: 12,
+  },
   actionRow: {
     flexDirection: 'row',
     gap: 10,
-    marginBottom: 8,
+    marginBottom: 6,
   },
   error: {
     color: '#c0392b',
@@ -1134,7 +1285,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E6E9EF',
     padding: 12,
-    marginTop: 8,
+    marginTop: 12,
+  },
+  planBlockTight: {
+    marginTop: 5,
   },
   topDealsBar: {
     backgroundColor: '#FFFFFF',
@@ -1159,26 +1313,30 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#1F1F1F',
   },
+  planCardWrap: {
+    marginBottom: 10,
+    borderRadius: 10,
+    shadowColor: '#7CCB93',
+    shadowOpacity: 0.45,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 6,
+  },
   planCard: {
     backgroundColor: '#FFFFFF',
-    marginBottom: 10,
-    borderRadius: 16,
+    borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#BFE7CB',
-    shadowColor: 'transparent',
-    shadowOpacity: 0,
-    shadowRadius: 0,
-    shadowOffset: { width: 0, height: 0 },
-    elevation: 0,
+    borderColor: '#7CCB93',
+    overflow: 'hidden',
   },
   planCardClip: {
-    borderRadius: 16,
+    borderRadius: 7,
     overflow: 'hidden',
     position: 'relative',
   },
   planCardPressable: {
-    borderRadius: 16,
-    overflow: 'hidden',
+    borderRadius: 10,
+    overflow: 'visible',
   },
   coverWrap: {
     position: 'relative',
@@ -1190,8 +1348,8 @@ const styles = StyleSheet.create({
   cover: {
     width: '100%',
     height: 150,
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
+    borderTopLeftRadius: 7,
+    borderTopRightRadius: 7,
   },
   coverLogoOverlay: {
     position: 'absolute',
@@ -1235,13 +1393,6 @@ const styles = StyleSheet.create({
     marginTop: 8,
     marginBottom: 4,
     color: '#1F1F1F',
-  },
-  planCardBottomShade: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    height: 4,
   },
   logoTitleRow: {
     flexDirection: 'row',
