@@ -59,6 +59,11 @@ const STOP_TOKENS = new Set([
   'round',
   'brisket',
   'chuck',
+  'fillet',
+  'fillets',
+  'filet',
+  'filets',
+  'steaks',
 ]);
 
 const BLOCKLIST_TOKENS = new Set([

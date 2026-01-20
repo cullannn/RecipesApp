@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
+import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import { Button, Checkbox, Chip, TextInput } from 'react-native-paper';
 
 import { PatternBackground } from '@/components/pattern-background';
@@ -11,6 +11,7 @@ import { formatPostalCode, isValidCanadianPostalCode, normalizePostalCode } from
 import { resolveStoreLogo } from '@/src/utils/storeLogos';
 
 const dietaryOptions = ['None', 'Vegetarian', 'Vegan', 'Pescatarian', 'Halal', 'Keto'];
+
 
 export default function OnboardingScreen() {
   const {
@@ -24,6 +25,8 @@ export default function OnboardingScreen() {
     setHouseholdSize,
     favoriteStores,
     toggleFavoriteStore,
+    onboardingComplete,
+    setOnboardingComplete,
   } = usePreferencesStore();
 
   const [postalInput, setPostalInput] = useState(formatPostalCode(postalCode));
@@ -31,6 +34,7 @@ export default function OnboardingScreen() {
   const [allergiesInput, setAllergiesInput] = useState(allergies);
   const [householdInput, setHouseholdInput] = useState(householdSize ? String(householdSize) : '');
   const [error, setError] = useState('');
+  const [stepIndex, setStepIndex] = useState(0);
 
   const toggleDietary = (option: string) => {
     setSelectedDietary((current) => {
@@ -47,20 +51,100 @@ export default function OnboardingScreen() {
 
   const normalizedPostal = useMemo(() => normalizePostalCode(postalInput), [postalInput]);
 
+  const params = useLocalSearchParams<{ edit?: string }>();
+  const isEditing = params.edit === 'true';
+
+  if (onboardingComplete && !isEditing) {
+    return <Redirect href="/(tabs)/deals" />;
+  }
+
+  const totalSteps = 5;
+  const rawProgress = totalSteps > 1 ? stepIndex / (totalSteps - 1) : 0;
+  const stepProgress = Number.isFinite(rawProgress)
+    ? Math.max(0, Math.min(1, rawProgress))
+    : 0;
+  const progressWidth = `${stepProgress * 100}%`;
+
+  const isHouseholdValid = () => {
+    const parsed = Number.parseInt(householdInput, 10);
+    return Number.isFinite(parsed) && parsed >= 1;
+  };
+
+  const validateHousehold = () => {
+    const parsed = Number.parseInt(householdInput, 10);
+    if (!Number.isFinite(parsed) || parsed < 1) {
+      setError('Household size must be at least 1.');
+      return false;
+    }
+    return true;
+  };
+
   const onSave = () => {
     if (!isValidCanadianPostalCode(postalInput)) {
       setError('Enter a valid Canadian postal code (ex: M5V 2T6).');
+      return;
+    }
+    if (!validateHousehold()) {
       return;
     }
     setError('');
     if (normalizedPostal) {
       setPostalCode(normalizedPostal);
     }
-    setDietaryPreferences(selectedDietary);
+    setDietaryPreferences(selectedDietary.length ? selectedDietary : ['None']);
     setAllergies(allergiesInput.trim());
     const parsedHousehold = Number.parseInt(householdInput, 10);
     setHouseholdSize(Number.isFinite(parsedHousehold) ? parsedHousehold : undefined);
-    router.replace('/(tabs)/settings');
+    setOnboardingComplete(true);
+    router.replace(isEditing ? '/(tabs)/settings' : '/(tabs)/deals');
+  };
+
+  const canAdvancePostal = isValidCanadianPostalCode(postalInput);
+  const stepTitle = () => {
+    switch (stepIndex) {
+      case 0:
+        return 'Postal code';
+      case 1:
+        return 'Dietary preferences';
+      case 2:
+        return 'Allergies (Optional)';
+      case 3:
+        return 'Household size';
+      case 4:
+        return 'Favorite grocery stores';
+      default:
+        return 'Set up your kitchen';
+    }
+  };
+
+  const handleNext = () => {
+    if (stepIndex === 0 && !canAdvancePostal) {
+      setError('Enter a valid Canadian postal code (ex: M5V 2T6).');
+      return;
+    }
+    if (stepIndex === 1 && selectedDietary.length === 0) {
+      setError('Select a dietary preference or choose None.');
+      return;
+    }
+    if (stepIndex === 3 && !validateHousehold()) {
+      return;
+    }
+    setError('');
+    setStepIndex((current) => Math.min(totalSteps - 1, current + 1));
+  };
+
+  const canAdvanceStep =
+    stepIndex === 0
+      ? canAdvancePostal
+      : stepIndex === 1
+        ? selectedDietary.length > 0
+        : stepIndex === 3
+          ? isHouseholdValid()
+          : true;
+
+  const handleBack = () => {
+    setError('');
+    setStepIndex((current) => Math.max(0, current - 1));
   };
 
   return (
@@ -82,109 +166,173 @@ export default function OnboardingScreen() {
       </View>
       <View style={styles.contentSurface}>
         <PatternBackground />
-        <ScrollView contentContainerStyle={styles.container}>
+        <ScrollView
+          contentContainerStyle={styles.container}
+          scrollEnabled={isEditing || stepIndex === 4}>
           <View style={styles.card}>
             <Text style={styles.subtitle}>Set up your kitchen</Text>
+            {isEditing ? null : (
+              <>
+                <View style={styles.progressTrack}>
+                  <View style={[styles.progressFill, { width: progressWidth }]} />
+                </View>
+                <Text style={styles.stepTitle}>{stepTitle()}</Text>
+              </>
+            )}
 
-            <View style={styles.section}>
-              <Text style={styles.label}>Postal code</Text>
-              <TextInput
-                mode="outlined"
-                style={styles.input}
-                placeholder="M5V 2T6"
-                value={postalInput}
-                autoCapitalize="characters"
-                onChangeText={(value) => setPostalInput(formatPostalCode(value))}
-                maxLength={7}
-                textColor="#5F6368"
-                placeholderTextColor="#B0B6BC"
-              />
-              {error ? <Text style={styles.error}>{error}</Text> : null}
-            </View>
-
-            <View style={styles.section}>
-              <Text style={styles.label}>Dietary preferences</Text>
-              <View style={styles.chipRow}>
-                {dietaryOptions.map((option) => {
-                  const active = selectedDietary.includes(option);
-                  return (
-                    <Chip
-                      key={option}
-                      selected={active}
-                      mode="outlined"
-                      onPress={() => toggleDietary(option)}
-                      style={[styles.chip, active && styles.chipSelected]}
-                      selectedColor="#1F1F1F">
-                      {option}
-                    </Chip>
-                  );
-                })}
+            {isEditing || stepIndex === 0 ? (
+              <View style={styles.section}>
+                {isEditing ? <Text style={styles.sectionSubtitle}>Postal code</Text> : null}
+                <TextInput
+                  mode="outlined"
+                  style={[styles.input, styles.inputCompact]}
+                  contentStyle={styles.inputContent}
+                  placeholder="M5V 2T6"
+                  value={postalInput}
+                  autoCapitalize="characters"
+                  onChangeText={(value) => setPostalInput(formatPostalCode(value))}
+                  maxLength={7}
+                  textColor="#5F6368"
+                  placeholderTextColor="#B0B6BC"
+                />
+                {error ? <Text style={styles.error}>{error}</Text> : null}
               </View>
-            </View>
+            ) : null}
 
-            <View style={styles.section}>
-              <Text style={styles.label}>Allergies</Text>
-              <TextInput
-                mode="outlined"
-                style={styles.input}
-                placeholder="Peanuts, shellfish, etc."
-                value={allergiesInput}
-                onChangeText={setAllergiesInput}
-                textColor="#5F6368"
-                placeholderTextColor="#B0B6BC"
-              />
-            </View>
-
-            <View style={styles.section}>
-              <Text style={styles.label}>Household size (optional)</Text>
-              <TextInput
-                mode="outlined"
-                style={styles.input}
-                placeholder="2"
-                value={householdInput}
-                keyboardType="number-pad"
-                onChangeText={setHouseholdInput}
-                textColor="#5F6368"
-                placeholderTextColor="#B0B6BC"
-              />
-            </View>
-
-            <View style={styles.section}>
-              <Text style={styles.label}>Favorite grocery stores</Text>
-              <Text style={styles.helper}>
-                Select stores to highlight in Deals and prioritize in meal plans.
-              </Text>
-              <View style={styles.storeList}>
-                {GROCERY_STORES.map((store) => {
-                  const logo = resolveStoreLogo(store);
-                  const checked = favoriteStores.includes(store);
-                  return (
-                    <Pressable
-                      key={store}
-                      onPress={() => toggleFavoriteStore(store)}
-                      style={({ pressed }) => [styles.storeRow, pressed && styles.storeRowPressed]}
-                    >
-                      {logo ? (
-                        <Image source={typeof logo === 'string' ? { uri: logo } : logo} style={styles.storeLogo} />
-                      ) : (
-                        <View style={styles.storeLogoFallback} />
-                      )}
-                      <Text style={styles.storeName}>{store}</Text>
-                      <Checkbox status={checked ? 'checked' : 'unchecked'} />
-                    </Pressable>
-                  );
-                })}
+            {isEditing || stepIndex === 1 ? (
+              <View style={styles.section}>
+                {isEditing ? <Text style={styles.sectionSubtitle}>Dietary preferences</Text> : null}
+                <View style={styles.chipRow}>
+                  {dietaryOptions.map((option) => {
+                    const active = selectedDietary.includes(option);
+                    return (
+                      <Chip
+                        key={option}
+                        selected={active}
+                        mode="outlined"
+                        onPress={() => toggleDietary(option)}
+                        style={[styles.chip, active && styles.chipSelected]}
+                        textStyle={styles.chipText}
+                        selectedColor="#1F1F1F">
+                        {option}
+                      </Chip>
+                    );
+                  })}
+                </View>
               </View>
-            </View>
+            ) : null}
 
-            <Button
-              mode="contained"
-              onPress={onSave}
-              buttonColor="#1B7F3A"
-              textColor="#FFFFFF"
-              style={styles.primaryButton}>
-              Save preferences
-            </Button>
+            {isEditing || stepIndex === 2 ? (
+              <View style={styles.section}>
+                {isEditing ? <Text style={styles.sectionSubtitle}>Allergies</Text> : null}
+                <TextInput
+                  mode="outlined"
+                  style={[styles.input, styles.inputCompact]}
+                  contentStyle={styles.inputContent}
+                  placeholder="Peanuts, shellfish, etc."
+                  value={allergiesInput}
+                  onChangeText={setAllergiesInput}
+                  textColor="#5F6368"
+                  placeholderTextColor="#B0B6BC"
+                />
+              </View>
+            ) : null}
+
+            {isEditing || stepIndex === 3 ? (
+              <View style={styles.section}>
+                {isEditing ? <Text style={styles.sectionSubtitle}>Household size</Text> : null}
+                <TextInput
+                  mode="outlined"
+                  style={[styles.input, styles.inputCompact]}
+                  contentStyle={styles.inputContent}
+                  placeholder="2"
+                  value={householdInput}
+                  keyboardType="number-pad"
+                  onChangeText={setHouseholdInput}
+                  textColor="#5F6368"
+                  placeholderTextColor="#B0B6BC"
+                />
+              </View>
+            ) : null}
+
+            {isEditing || stepIndex === 4 ? (
+              <View style={styles.section}>
+                {isEditing ? <Text style={styles.sectionSubtitle}>Favorite grocery stores</Text> : null}
+                <View style={styles.storeList}>
+                  {GROCERY_STORES.map((store) => {
+                    const logo = resolveStoreLogo(store);
+                    const checked = favoriteStores.includes(store);
+                    return (
+                      <Pressable
+                        key={store}
+                        onPress={() => toggleFavoriteStore(store)}
+                        style={({ pressed }) => [styles.storeRow, pressed && styles.storeRowPressed]}
+                      >
+                        {logo ? (
+                          <Image
+                            source={typeof logo === 'string' ? { uri: logo } : logo}
+                            style={styles.storeLogo}
+                          />
+                        ) : (
+                          <View style={styles.storeLogoFallback} />
+                        )}
+                        <Text style={styles.storeName}>{store}</Text>
+                        <Checkbox status={checked ? 'checked' : 'unchecked'} />
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </View>
+            ) : null}
+
+            {isEditing ? (
+              <View style={styles.actionsRow}>
+                <Button
+                  mode="contained"
+                  onPress={onSave}
+                  buttonColor="#1B7F3A"
+                  textColor="#FFFFFF"
+                  style={styles.primaryButton}>
+                  Save preferences
+                </Button>
+              </View>
+            ) : (
+              <View style={styles.actionsRow}>
+                {stepIndex > 0 ? (
+                  <Button
+                    mode="outlined"
+                    onPress={handleBack}
+                    textColor="#1B7F3A"
+                    style={styles.secondaryButton}>
+                    Back
+                  </Button>
+                ) : null}
+                {stepIndex < totalSteps - 1 ? (
+                  <Button
+                    mode="contained"
+                    onPress={handleNext}
+                    disabled={!canAdvanceStep}
+                    buttonColor="#1B7F3A"
+                    textColor="#FFFFFF"
+                    style={[
+                      styles.primaryButton,
+                      stepIndex === 0 && styles.primaryButtonCentered,
+                      !canAdvanceStep && styles.primaryButtonDisabled,
+                    ]}>
+                    Next
+                  </Button>
+                ) : (
+                  <Button
+                    mode="contained"
+                    onPress={onSave}
+                    buttonColor="#1B7F3A"
+                    textColor="#FFFFFF"
+                    style={styles.primaryButton}>
+                    Save preferences
+                  </Button>
+                )}
+              </View>
+            )}
           </View>
         </ScrollView>
       </View>
@@ -245,6 +393,35 @@ const styles = StyleSheet.create({
     color: '#1B7F3A',
     marginBottom: 12,
   },
+  progressTrack: {
+    height: 6,
+    borderRadius: 999,
+    backgroundColor: '#E2F2E8',
+    overflow: 'hidden',
+    marginBottom: 10,
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: '#3F8F5E',
+    borderRadius: 999,
+  },
+  stepIndicator: {
+    fontSize: 12,
+    color: '#6C7075',
+    marginBottom: 6,
+  },
+  stepTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1F1F1F',
+    marginBottom: 16,
+  },
+  sectionSubtitle: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#5F6368',
+    marginBottom: 8,
+  },
   section: {
     marginBottom: 20,
   },
@@ -265,6 +442,12 @@ const styles = StyleSheet.create({
     borderColor: '#E0E0E0',
     borderRadius: 10,
   },
+  inputCompact: {
+    height: 44,
+  },
+  inputContent: {
+    fontSize: 13,
+  },
   chipRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -272,6 +455,9 @@ const styles = StyleSheet.create({
   },
   chip: {
     backgroundColor: '#F1F3F4',
+  },
+  chipText: {
+    fontSize: 12,
   },
   chipSelected: {
     backgroundColor: '#D8EFDF',
@@ -315,7 +501,29 @@ const styles = StyleSheet.create({
     color: '#c0392b',
     marginTop: 6,
   },
+  actionsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginTop: 12,
+  },
+  secondaryButton: {
+    flex: 1,
+    borderColor: '#1B7F3A',
+  },
+  secondaryButtonDisabled: {
+    opacity: 0.5,
+  },
   primaryButton: {
     marginTop: 8,
+    flex: 1,
+  },
+  primaryButtonDisabled: {
+    backgroundColor: '#A9B7AE',
+  },
+  primaryButtonCentered: {
+    alignSelf: 'center',
+    flex: 0,
+    minWidth: 140,
   },
 });

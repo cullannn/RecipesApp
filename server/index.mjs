@@ -88,6 +88,36 @@ function sendJson(res, status, payload) {
   res.end(body);
 }
 
+const PROMPT_PROTEIN_TOKENS = [
+  'chicken',
+  'beef',
+  'pork',
+  'fish',
+  'salmon',
+  'shrimp',
+  'oyster',
+  'crab',
+  'lobster',
+  'turkey',
+  'duck',
+  'lamb',
+  'tripe',
+  'catfish',
+  'tilapia',
+  'cod',
+  'tuna',
+];
+
+function extractPromptProteins(prompt) {
+  const tokens = String(prompt ?? '')
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .split(/\s+/)
+    .filter(Boolean);
+  const hits = new Set(tokens.filter((token) => PROMPT_PROTEIN_TOKENS.includes(token)));
+  return Array.from(hits.values());
+}
+
 function buildPrompt(input) {
   const count = Number.isFinite(input.count) && input.count > 0 ? input.count : 5;
   const servings =
@@ -134,12 +164,27 @@ function buildPrompt(input) {
     avoidTitles.length > 0
       ? `Do not repeat these recipe titles: ${avoidTitles.join('; ')}.`
       : '';
+  const recentTitles = Array.isArray(input.recentTitles)
+    ? input.recentTitles.map((title) => String(title).trim()).filter(Boolean)
+    : [];
+  const recentLine =
+    recentTitles.length > 0
+      ? `Avoid repeating these recent recipe titles if possible: ${recentTitles.join('; ')}.`
+      : '';
   const preferredIngredients = Array.isArray(input.preferredIngredients)
     ? input.preferredIngredients.map((item) => String(item).trim()).filter(Boolean)
     : [];
   const preferredLine =
     preferredIngredients.length > 0
       ? `Prioritize using these preferred ingredients if possible: ${preferredIngredients.join(', ')}.`
+      : '';
+  const proteinFocus = extractPromptProteins(input.prompt);
+  const proteinLine =
+    proteinFocus.length > 0
+      ? `Protein focus requested: ${proteinFocus.join(', ')}. Ensure most recipes (at least ${Math.max(
+          1,
+          Math.ceil(count * 0.7)
+        )} of ${count}) center on these proteins, preferably all of them.`
       : '';
   return [
     `Generate exactly ${count} distinct weeknight recipes for a home cook in Toronto.`,
@@ -151,7 +196,9 @@ function buildPrompt(input) {
     dietaryLine,
     allergyLine,
     avoidLine,
+    recentLine,
     preferredLine,
+    proteinLine,
     'Each recipe must include a clear "interesting twist" (e.g., a unique flavor pairing, technique, or ingredient swap).',
     'Favor bold, unexpected flavor pairings that still feel delicious and balanced; aim for a "wow" factor.',
     'Keep each recipe concise: 8-12 ingredients and 5-7 steps maximum.',
@@ -850,6 +897,138 @@ function normalizeTextForMatch(value) {
     .trim();
 }
 
+const STEP_INGREDIENT_IGNORE = new Set(['salt', 'pepper', 'water']);
+const STEP_TOKEN_IGNORE = new Set([
+  'fresh',
+  'frozen',
+  'organic',
+  'boneless',
+  'skinless',
+  'lean',
+  'extra',
+  'large',
+  'small',
+  'medium',
+  'whole',
+  'seedless',
+  'sweet',
+  'baby',
+  'red',
+  'white',
+  'green',
+  'yellow',
+  'chopped',
+  'sliced',
+  'diced',
+  'minced',
+  'ground',
+  'fillet',
+  'fillets',
+  'filet',
+  'filets',
+  'steak',
+  'steaks',
+]);
+
+const PROTEIN_TOKENS = [
+  'chicken',
+  'beef',
+  'pork',
+  'fish',
+  'salmon',
+  'shrimp',
+  'oyster',
+  'crab',
+  'lobster',
+  'turkey',
+  'duck',
+  'lamb',
+  'tripe',
+  'catfish',
+  'tilapia',
+  'cod',
+  'tuna',
+];
+
+const PROTEIN_PANTRY_CONTEXT = [
+  'sauce',
+  'paste',
+  'oil',
+  'broth',
+  'stock',
+  'seasoning',
+  'powder',
+  'miso',
+  'glaze',
+  'marinade',
+  'rub',
+];
+
+function getIngredientTokens(ingredientName) {
+  return normalizeTextForMatch(ingredientName)
+    .split(' ')
+    .filter((token) => token.length > 2 && !STEP_TOKEN_IGNORE.has(token));
+}
+
+function ingredientHasProtein(ingredientName) {
+  const normalized = normalizeTextForMatch(ingredientName);
+  if (!normalized) {
+    return [];
+  }
+  if (PROTEIN_PANTRY_CONTEXT.some((term) => normalized.includes(term))) {
+    return [];
+  }
+  const tokens = getIngredientTokens(normalized);
+  return PROTEIN_TOKENS.filter((protein) => tokens.includes(protein));
+}
+
+function titleProteinMismatch(recipe) {
+  const title = normalizeTextForMatch(recipe.title);
+  if (!title) {
+    return false;
+  }
+  const titleProtein = PROTEIN_TOKENS.filter((token) => title.includes(token));
+  if (titleProtein.length === 0) {
+    return false;
+  }
+  const proteinHits = new Set();
+  (recipe.ingredients ?? []).forEach((ingredient) => {
+    ingredientHasProtein(ingredient?.name).forEach((token) => proteinHits.add(token));
+  });
+  if (proteinHits.size === 0) {
+    return true;
+  }
+  return !titleProtein.some((token) => proteinHits.has(token));
+}
+
+function findMissingStepIngredients(recipe) {
+  const stepsText = normalizeTextForMatch(
+    Array.isArray(recipe.steps) ? recipe.steps.join(' ') : ''
+  );
+  if (!stepsText) {
+    return [];
+  }
+  const missing = [];
+  (recipe.ingredients ?? []).forEach((ingredient) => {
+    const name = normalizeTextForMatch(ingredient?.name);
+    if (!name) {
+      return;
+    }
+    if (STEP_INGREDIENT_IGNORE.has(name)) {
+      return;
+    }
+    const tokens = getIngredientTokens(name);
+    if (tokens.length === 0) {
+      return;
+    }
+    const matches = tokens.some((token) => stepsText.includes(token)) || stepsText.includes(name);
+    if (!matches) {
+      missing.push(name);
+    }
+  });
+  return missing;
+}
+
 function filterByDietaryTags(recipes, preferences) {
   if (!Array.isArray(preferences) || preferences.length === 0) {
     return recipes;
@@ -914,6 +1093,45 @@ function recipesEmpty(recipes) {
   return !Array.isArray(recipes) || recipes.length === 0;
 }
 
+function pruneInvalidRecipes(recipes, label) {
+  if (!Array.isArray(recipes)) {
+    return [];
+  }
+  const invalid = [];
+  const valid = recipes.filter((recipe) => {
+    const ingredientCount = Array.isArray(recipe.ingredients) ? recipe.ingredients.length : 0;
+    const stepCount = Array.isArray(recipe.steps) ? recipe.steps.length : 0;
+    if (ingredientCount === 0 || stepCount === 0) {
+      invalid.push({ title: recipe.title, ingredients: ingredientCount, steps: stepCount });
+      return false;
+    }
+    if (titleProteinMismatch(recipe)) {
+      invalid.push({
+        title: recipe.title,
+        ingredients: ingredientCount,
+        steps: stepCount,
+        reason: 'title_protein_mismatch',
+      });
+      return false;
+    }
+    const missingSteps = findMissingStepIngredients(recipe);
+    if (missingSteps.length > 0) {
+      invalid.push({
+        title: recipe.title,
+        ingredients: ingredientCount,
+        steps: stepCount,
+        missingSteps,
+      });
+      return false;
+    }
+    return true;
+  });
+  if (invalid.length > 0) {
+    logWithTs(`[ai:recipes] dropped invalid recipes ${label}`, invalid);
+  }
+  return valid;
+}
+
 function applyRecipeFilters(recipes, options) {
   let filtered = options.relaxCuisine
     ? recipes
@@ -974,6 +1192,7 @@ function buildRecipeCacheKey({
   dietaryPreferences,
   allergies,
   preferredIngredients,
+  recentTitles,
 }) {
   const normalizedPrompt = String(prompt ?? '').trim().toLowerCase();
   const normalizedCuisines = Array.isArray(cuisines)
@@ -996,6 +1215,9 @@ function buildRecipeCacheKey({
   const normalizedPreferred = Array.isArray(preferredIngredients)
     ? preferredIngredients.map((item) => String(item).trim().toLowerCase()).filter(Boolean)
     : [];
+  const normalizedRecent = Array.isArray(recentTitles)
+    ? recentTitles.map((item) => String(item).trim().toLowerCase()).filter(Boolean)
+    : [];
   const keySource = JSON.stringify({
     prompt: normalizedPrompt,
     cuisines: normalizedCuisines.sort(),
@@ -1005,6 +1227,7 @@ function buildRecipeCacheKey({
     dietaryPreferences: normalizedDietary.sort(),
     allergies: normalizedAllergies.sort(),
     preferredIngredients: normalizedPreferred.sort(),
+    recentTitles: normalizedRecent.sort(),
   });
   return crypto.createHash('sha256').update(keySource).digest('hex').slice(0, 20);
 }
@@ -1160,6 +1383,9 @@ async function handleRecipes(req, res, body) {
   const preferredIngredients = Array.isArray(data.preferredIngredients)
     ? data.preferredIngredients.map((item) => String(item))
     : [];
+  const recentTitles = Array.isArray(data.recentTitles)
+    ? data.recentTitles.map((title) => String(title))
+    : [];
   const excludeTitles = Array.isArray(data.excludeTitles)
     ? data.excludeTitles.map((title) => String(title))
     : [];
@@ -1179,15 +1405,17 @@ async function handleRecipes(req, res, body) {
     dietaryPreferences,
     allergies,
     preferredIngredients,
+    recentTitles,
   });
   const cachedEntry = recipeCache[cacheKey];
   if (cachedEntry && Array.isArray(cachedEntry.recipes) && cachedEntry.recipes.length > 0) {
     const generatedBy = typeof cachedEntry.generatedBy === 'string' ? cachedEntry.generatedBy : '';
     if (!userId || !generatedBy || generatedBy !== userId) {
-      const normalizedRecipes = cachedEntry.recipes.map((recipe) => ({
+      let normalizedRecipes = cachedEntry.recipes.map((recipe) => ({
         ...recipe,
         steps: normalizeSteps(recipe?.steps),
       }));
+      normalizedRecipes = pruneInvalidRecipes(normalizedRecipes, 'cache');
       if (normalizedRecipes.some((recipe) => recipe.steps.length === 0)) {
         cachedEntry.recipes = normalizedRecipes;
         await saveRecipeCache(recipeCache);
@@ -1210,6 +1438,7 @@ async function handleRecipes(req, res, body) {
     dietaryPreferences,
     allergies,
     preferredIngredients,
+    recentTitles,
     excludeTitles,
     userId,
     provider: recipeProvider,
@@ -1223,6 +1452,7 @@ async function handleRecipes(req, res, body) {
     dietaryPreferences,
     allergies,
     preferredIngredients,
+    recentTitles,
   });
   logWithTs('[ai:recipes] prompt', fullPrompt);
   const chat =
@@ -1325,6 +1555,7 @@ async function handleRecipes(req, res, body) {
                 dietaryPreferences,
                 allergies,
                 preferredIngredients,
+                recentTitles,
               }),
               model: OPENAI_RECIPE_MODEL,
               temperature: 0.4,
@@ -1342,6 +1573,7 @@ async function handleRecipes(req, res, body) {
                 dietaryPreferences,
                 allergies,
                 preferredIngredients,
+                recentTitles,
               }),
               model: NEBIUS_RECIPE_MODEL,
               temperature: 0.4,
@@ -1380,6 +1612,7 @@ async function handleRecipes(req, res, body) {
       retryAttempts += 1;
     }
   }
+  recipes = pruneInvalidRecipes(recipes, 'post-parse');
   if (Number.isFinite(count) && count > 0 && recipes.length < count) {
     let attempts = 0;
     let avoidTitles = recipes.map((recipe) => recipe.title);
@@ -1395,6 +1628,7 @@ async function handleRecipes(req, res, body) {
         allergies,
         avoidTitles,
         preferredIngredients,
+        recentTitles,
       });
       const followupChat =
         recipeProvider === 'openai'
@@ -1419,7 +1653,7 @@ async function handleRecipes(req, res, body) {
         }
       }
       if (followupParsed) {
-        const followupRecipes = applyRecipeFilters(coerceRecipes(followupParsed), {
+        let followupRecipes = applyRecipeFilters(coerceRecipes(followupParsed), {
           cuisines,
           dietaryPreferences,
           allergies,
@@ -1427,6 +1661,7 @@ async function handleRecipes(req, res, body) {
           maxCookTimeMins,
           relaxCuisine: true,
         });
+        followupRecipes = pruneInvalidRecipes(followupRecipes, 'followup');
         const unique = followupRecipes.filter(
           (recipe) => !avoidTitles.some((title) => title.toLowerCase() === recipe.title.toLowerCase())
         );
@@ -1440,7 +1675,7 @@ async function handleRecipes(req, res, body) {
   }
   let cuisineFallback = false;
   if (cuisines.length > 0 && recipes.length === 0) {
-    recipes = coercedRecipes;
+    recipes = pruneInvalidRecipes(coercedRecipes, 'fallback');
     cuisineFallback = true;
   }
   await attachRecipeImages(recipes, baseUrl);

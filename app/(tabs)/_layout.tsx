@@ -5,12 +5,17 @@ import { HapticTab } from '@/components/haptic-tab';
 import { AnimatedTabIcon } from '@/components/animated-tab-icon';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuthStore } from '@/src/state/useAuthStore';
+import { usePreferencesStore } from '@/src/state/usePreferencesStore';
 
 export default function TabLayout() {
   useColorScheme();
   const userId = useAuthStore((state) => state.userId);
+  const onboardingComplete = usePreferencesStore((state) => state.onboardingComplete);
   if (!userId) {
     return <Redirect href="/login" />;
+  }
+  if (!onboardingComplete) {
+    return <Redirect href="/onboarding" />;
   }
   return (
     <Tabs

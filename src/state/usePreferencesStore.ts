@@ -33,6 +33,7 @@ type PreferencesState = {
   householdSize?: number;
   favoriteStores: string[];
   pantryItems: PantryItem[];
+  onboardingComplete: boolean;
   setPostalCode: (postalCode: string) => void;
   setDietaryPreferences: (preferences: string[]) => void;
   setAllergies: (allergies: string) => void;
@@ -41,6 +42,7 @@ type PreferencesState = {
   toggleFavoriteStore: (store: string) => void;
   addPantryItem: (item: string, category: PantryCategory) => void;
   removePantryItem: (item: PantryItem) => void;
+  setOnboardingComplete: (complete: boolean) => void;
 };
 
 export const usePreferencesStore = create<PreferencesState>()(
@@ -52,6 +54,7 @@ export const usePreferencesStore = create<PreferencesState>()(
       householdSize: undefined,
       favoriteStores: [],
       pantryItems: [],
+      onboardingComplete: false,
       setPostalCode: (postalCode) => set({ postalCode }),
       setDietaryPreferences: (dietaryPreferences) => set({ dietaryPreferences }),
       setAllergies: (allergies) => set({ allergies }),
@@ -96,6 +99,7 @@ export const usePreferencesStore = create<PreferencesState>()(
               )
           ),
         })),
+      setOnboardingComplete: (onboardingComplete) => set({ onboardingComplete }),
     }),
     {
       name: 'dealchef-preferences',
@@ -107,6 +111,7 @@ export const usePreferencesStore = create<PreferencesState>()(
         }
         const anyState = state as PreferencesState & {
           pantryItems?: Array<string | PantryItem>;
+          onboardingComplete?: boolean;
         };
         const rawItems = anyState.pantryItems ?? [];
         const migratedItems = rawItems.map((item) => {
@@ -115,7 +120,18 @@ export const usePreferencesStore = create<PreferencesState>()(
           }
           return item;
         });
-        return { ...anyState, pantryItems: migratedItems };
+        const inferredComplete =
+          typeof anyState.onboardingComplete === 'boolean'
+            ? anyState.onboardingComplete
+            : Boolean(
+                anyState.postalCode ||
+                  (anyState.favoriteStores && anyState.favoriteStores.length > 0) ||
+                  (anyState.dietaryPreferences && anyState.dietaryPreferences.length > 0) ||
+                  anyState.allergies ||
+                  anyState.householdSize ||
+                  migratedItems.length > 0
+              );
+        return { ...anyState, pantryItems: migratedItems, onboardingComplete: inferredComplete };
       },
     }
   )

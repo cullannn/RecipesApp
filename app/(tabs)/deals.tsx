@@ -856,7 +856,7 @@ export default function DealsScreen() {
                   setUndoDeal(null);
                 },
               }}>
-              Removed {undoDeal?.title ?? 'deal'}
+              <Text style={styles.snackbarText}>Removed {undoDeal?.title ?? 'deal'}</Text>
             </Snackbar>
           </View>
         </>
@@ -882,6 +882,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginTop: 4,
+  },
+  snackbarText: {
+    color: '#FFFFFF',
   },
   logoTitleRow: {
     flexDirection: 'row',

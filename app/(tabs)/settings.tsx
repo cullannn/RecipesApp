@@ -132,7 +132,7 @@ export default function SettingsScreen() {
 
           <Button
             mode="contained"
-            onPress={() => router.push('/(tabs)/preferences')}
+            onPress={() => router.push('/(tabs)/preferences?edit=true')}
             buttonColor="#1B7F3A"
             textColor="#FFFFFF"
             style={styles.primaryButton}>

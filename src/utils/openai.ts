@@ -18,6 +18,7 @@ type OpenAiRecipePayload = {
 
 const AI_BASE_URL = process.env.EXPO_PUBLIC_AI_BASE_URL ?? 'http://localhost:8787';
 const REQUEST_TIMEOUT_MS = 120000;
+let recipeBatchCounter = 0;
 
 function toSafeNumber(value: unknown, fallback: number): number {
   if (typeof value === 'number' && Number.isFinite(value)) {
@@ -89,15 +90,15 @@ function normalizeSteps(steps: unknown): string[] {
   return [];
 }
 
-function buildRecipeId(title: string, index: number): string {
+function buildRecipeId(title: string, index: number, batchId: string): string {
   const slug = title
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/(^-|-$)/g, '');
-  return `ai-${slug || 'recipe'}-${index + 1}`;
+  return `ai-${slug || 'recipe'}-${index + 1}-${batchId}`;
 }
 
-function coerceRecipes(payload: unknown): Recipe[] {
+function coerceRecipes(payload: unknown, batchId: string): Recipe[] {
   const items = Array.isArray(payload) ? payload : (payload as { recipes?: unknown[] })?.recipes;
   if (!Array.isArray(items)) {
     return [];
@@ -110,7 +111,7 @@ function coerceRecipes(payload: unknown): Recipe[] {
       return;
     }
     recipes.push({
-      id: buildRecipeId(title, index),
+      id: buildRecipeId(title, index, batchId),
       title,
       imageUrl: data.imageUrl ?? undefined,
       servings: toSafeNumber(data.servings, 2),
@@ -135,8 +136,11 @@ export async function generateRecipesFromPrompt(input: {
   allergies?: string;
   preferredIngredients?: string[];
   excludeTitles?: string[];
+  recentTitles?: string[];
 }): Promise<{ recipes: Recipe[]; cuisineFallback: boolean }> {
   const userId = useAuthStore.getState().userId;
+  const batchId = `${Date.now().toString(36)}-${recipeBatchCounter}`;
+  recipeBatchCounter += 1;
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   let response: Response;
@@ -157,6 +161,7 @@ export async function generateRecipesFromPrompt(input: {
         allergies: input.allergies,
         preferredIngredients: input.preferredIngredients ?? [],
         excludeTitles: input.excludeTitles ?? [],
+        recentTitles: input.recentTitles ?? [],
         ...(userId ? { userId } : {}),
       }),
     });
@@ -179,7 +184,7 @@ export async function generateRecipesFromPrompt(input: {
   }
   const data = await response.json();
   return {
-    recipes: coerceRecipes(data),
+    recipes: coerceRecipes(data, batchId),
     cuisineFallback: Boolean(data?.cuisineFallback),
   };
 }

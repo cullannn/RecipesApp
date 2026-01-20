@@ -382,6 +382,10 @@ export function buildGroceryList(plan: MealPlan, deals: DealItem[]): GroceryList
     string,
     { item: GroceryListItem; unitMap: Map<string, UnitAccumulator>; displayName: string }
   >();
+  const preferredStore = plan.selectedStore;
+  const preferredDeals = preferredStore
+    ? deals.filter((deal) => deal.store === preferredStore)
+    : [];
 
   for (const recipe of plan.recipes) {
     for (const ingredient of recipe.ingredients) {
@@ -389,9 +393,14 @@ export function buildGroceryList(plan: MealPlan, deals: DealItem[]): GroceryList
       if (!normalizedName) {
         continue;
       }
+      if (normalizedName === 'water') {
+        continue;
+      }
       const unit = ingredient.unit || '';
       const key = normalizedName;
-      const matchedDeal = deals.find((deal) => matchDealToIngredient(deal, ingredient.name));
+      const matchedDeal =
+        preferredDeals.find((deal) => matchDealToIngredient(deal, ingredient.name)) ??
+        deals.find((deal) => matchDealToIngredient(deal, ingredient.name));
 
       let entry = itemMap.get(key);
       if (!entry) {

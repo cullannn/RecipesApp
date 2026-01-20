@@ -290,6 +290,53 @@ const RecipeCard = memo(function RecipeCard({
   );
 });
 
+const RecipeCardPlaceholder = memo(function RecipeCardPlaceholder({ index }: { index: number }) {
+  const shimmer = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(shimmer, {
+          toValue: 1,
+          duration: 900,
+          easing: Easing.inOut(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.timing(shimmer, {
+          toValue: 0,
+          duration: 900,
+          easing: Easing.inOut(Easing.cubic),
+          useNativeDriver: true,
+        }),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [shimmer]);
+  const shimmerOpacity = shimmer.interpolate({ inputRange: [0, 1], outputRange: [0.05, 1] });
+  return (
+    <View style={styles.placeholderCardWrap} accessibilityLabel={`Loading recipe ${index + 1}`}>
+      <View style={styles.placeholderCard}>
+        <Animated.View style={[styles.placeholderPulse, { opacity: shimmerOpacity }]} />
+        <View style={styles.placeholderImage} />
+        <View style={styles.placeholderContent}>
+          <Animated.View style={[styles.placeholderLine, { opacity: shimmerOpacity }]} />
+          <Animated.View style={[styles.placeholderLineShort, { opacity: shimmerOpacity }]} />
+          <Animated.View style={[styles.placeholderLine, { opacity: shimmerOpacity }]} />
+        </View>
+        <Animated.View style={[styles.placeholderGloss, { opacity: shimmerOpacity }]} />
+        <Animated.View style={[styles.placeholderLogoWrap, { opacity: shimmerOpacity }]}>
+          <Image
+            source={require('../../assets/logos/app-logo/forkcast-logo-transparent.png')}
+            style={styles.placeholderLogo}
+            contentFit="contain"
+            tintColor="#FFFFFF"
+          />
+        </Animated.View>
+      </View>
+    </View>
+  );
+});
+
 function formatScaledQuantity(
   quantity: number | string,
   unit: string,
@@ -382,6 +429,8 @@ export default function PlanScreen() {
 
   const [maxCookInput, setMaxCookInput] = useState('');
   const [maxCookTouched, setMaxCookTouched] = useState(false);
+  const [draftRecipes, setDraftRecipes] = useState<Recipe[] | null>(null);
+  const [draftPlaceholders, setDraftPlaceholders] = useState(0);
   const [mealsDraft, setMealsDraft] = useState(mealsRequested);
   const sliderProgress = useSharedValue(mealsRequested);
   const sliderMin = useSharedValue(1);
@@ -448,6 +497,34 @@ export default function PlanScreen() {
     sliderProgress.value = mealsRequested;
     setMealsDraft(mealsRequested);
   }, [mealsRequested, sliderProgress]);
+
+  const updateDraftPlan = useCallback(
+    (recipesForPlan: Recipe[]) => {
+      const uniqueRecipes = recipesForPlan.filter(
+        (recipe, index, list) =>
+          index ===
+          list.findIndex(
+            (item) => item.title.toLowerCase().trim() === recipe.title.toLowerCase().trim()
+          )
+      );
+      const visibleRecipes = uniqueRecipes.slice(0, mealsRequested);
+      const pendingCount = Math.max(0, mealsRequested - visibleRecipes.length);
+      setDraftRecipes(visibleRecipes);
+      setDraftPlaceholders(pendingCount);
+    },
+    [
+      aiPrompt,
+      dietaryPreferences,
+      favoriteDealIdsForPlan,
+      favoriteStores,
+      filteredDeals,
+      maxCookTimeMins,
+      mealsRequested,
+      pinnedRecipeIds,
+      selectedCuisines,
+      servings,
+    ]
+  );
 
   const effectiveServings = servings && servings > 0 ? servings : undefined;
   const recentRecipeIds = useMemo(() => {
@@ -552,6 +629,13 @@ export default function PlanScreen() {
     });
   }, [groceryItems]);
 
+  useEffect(() => {
+    const rendered = (draftRecipes ?? plan?.recipes ?? []).map((recipe) => recipe.title);
+    if (rendered.length > 0) {
+      console.log('[plan] ui recipes rendered', rendered);
+    }
+  }, [draftRecipes, plan?.recipes]);
+
   const handleGeneratePlan = async (mode: 'update' | 'full' = 'update') => {
     setError('');
     setInfo('');
@@ -561,10 +645,14 @@ export default function PlanScreen() {
     if (mode === 'full') {
       setPlan(undefined as unknown as MealPlan);
     }
+    setDraftRecipes([]);
+    setDraftPlaceholders(mealsRequested);
     if (!postalCode) {
       setError('Add a postal code in Settings to generate a plan.');
       setIsGeneratingPlan(false);
       setGeneratingMode(null);
+      setDraftRecipes(null);
+      setDraftPlaceholders(0);
       return;
     }
     if (aiPrompt.trim() && dealsQuery.isLoading) {
@@ -583,10 +671,23 @@ export default function PlanScreen() {
           dietaryPreferences,
           allergies,
           preferredIngredients,
+          excludeTitles: [],
+          recentTitles: recipeHistory
+            .filter((entry) => {
+              const createdAt = Date.parse(entry.createdAt);
+              if (Number.isNaN(createdAt)) {
+                return false;
+              }
+              return createdAt >= Date.now() - 30 * 24 * 60 * 60 * 1000;
+            })
+            .flatMap((entry) => entry.recipes.map((recipe) => recipe.title)),
         });
+        updateDraftPlan(generated);
         if (generated.length === 0) {
           setError('No recipes matched that cooking vibe. Try another prompt.');
           setInfo('');
+          setDraftRecipes(null);
+          setDraftPlaceholders(0);
           return;
         }
         if (generated.length < mealsRequested) {
@@ -605,6 +706,15 @@ export default function PlanScreen() {
               allergies,
               preferredIngredients,
               excludeTitles,
+              recentTitles: recipeHistory
+                .filter((entry) => {
+                  const createdAt = Date.parse(entry.createdAt);
+                  if (Number.isNaN(createdAt)) {
+                    return false;
+                  }
+                  return createdAt >= Date.now() - 30 * 24 * 60 * 60 * 1000;
+                })
+                .flatMap((entry) => entry.recipes.map((recipe) => recipe.title)),
             });
             merged = [...merged, ...followup].filter(
               (recipe, index, list) =>
@@ -613,6 +723,7 @@ export default function PlanScreen() {
                   (item) => item.title.toLowerCase().trim() === recipe.title.toLowerCase().trim()
                 )
             );
+            updateDraftPlan(merged);
             attempt += 1;
           }
           let usedLocalTopUp = false;
@@ -626,6 +737,7 @@ export default function PlanScreen() {
             const remaining = mealsRequested - merged.length;
             merged.push(...fallbackPool.slice(0, remaining));
             usedLocalTopUp = true;
+            updateDraftPlan(merged);
           }
           console.log('[plan] ai followup results', {
             requested: mealsRequested,
@@ -639,7 +751,7 @@ export default function PlanScreen() {
         setAiRecipes(generated);
         recipesForPlan = generated;
         if (cuisineFallback && selectedCuisines.length > 0) {
-          setInfo('AI used your prompt but could not guarantee cuisine tags.');
+          console.log('[plan] cuisine fallback used for AI recipes');
         }
       } else if (aiRecipes.length > 0) {
         setAiRecipes([]);
@@ -654,8 +766,28 @@ export default function PlanScreen() {
             (item) => !pinnedSet.has(item.id) && !recentRecipeIds.has(item.id)
           ),
         ];
-      } else {
+      } else if (!aiPrompt.trim()) {
         recipesForPlan = recipesForPlan.filter((item) => !recentRecipeIds.has(item.id));
+      }
+      const seenTitles = new Set<string>();
+      const duplicateTitles: string[] = [];
+      recipesForPlan = recipesForPlan.filter((recipe) => {
+        const key = recipe.title.toLowerCase().trim();
+        if (!key) {
+          return false;
+        }
+        if (seenTitles.has(key)) {
+          duplicateTitles.push(recipe.title);
+          return false;
+        }
+        seenTitles.add(key);
+        return true;
+      });
+      if (duplicateTitles.length > 0) {
+        console.log('[plan] deduped duplicate titles before selection', {
+          duplicates: duplicateTitles.length,
+          titles: duplicateTitles.length <= 10 ? duplicateTitles : duplicateTitles.slice(0, 10),
+        });
       }
       const generated = generateMealPlan({
         mealsRequested,
@@ -672,6 +804,38 @@ export default function PlanScreen() {
           servings,
         },
       });
+      const deduped = generated.recipes.filter(
+        (recipe, index, list) =>
+          index ===
+          list.findIndex(
+            (item) => item.title.toLowerCase().trim() === recipe.title.toLowerCase().trim()
+          )
+      );
+      if (deduped.length < mealsRequested) {
+        const existingTitles = new Set(deduped.map((recipe) => recipe.title.toLowerCase().trim()));
+        const fillers = recipesForPlan.filter(
+          (recipe) => !existingTitles.has(recipe.title.toLowerCase().trim())
+        );
+        deduped.push(...fillers.slice(0, mealsRequested - deduped.length));
+      }
+      generated.recipes = deduped.slice(0, mealsRequested);
+      const selectedTitles = new Set(
+        generated.recipes.map((recipe) => recipe.title.toLowerCase().trim()).filter(Boolean)
+      );
+      const sourceTitles = recipesForPlan
+        .map((recipe) => recipe.title.toLowerCase().trim())
+        .filter(Boolean);
+      const droppedTitles = sourceTitles.filter((title) => !selectedTitles.has(title));
+      if (droppedTitles.length > 0) {
+        console.log('[plan] selection dropped recipes', {
+          source: sourceTitles.length,
+          selected: selectedTitles.size,
+          dropped: droppedTitles.length,
+          titles: droppedTitles.length <= 10 ? droppedTitles : droppedTitles.slice(0, 10),
+        });
+      }
+      setDraftRecipes(null);
+      setDraftPlaceholders(0);
       console.log('[plan] generated recipes count', {
         requested: mealsRequested,
         returned: generated.recipes.length,
@@ -688,6 +852,8 @@ export default function PlanScreen() {
       const message = err instanceof Error ? err.message : 'Failed to generate AI recipes.';
       setError(message);
       setInfo('');
+      setDraftRecipes(null);
+      setDraftPlaceholders(0);
       return;
     } finally {
       setIsGeneratingPlan(false);
@@ -707,13 +873,20 @@ export default function PlanScreen() {
     const favoriteDeals = favoriteDealIdsForPlan.length
       ? allDeals.filter((deal) => favoriteDealIdsForPlan.includes(deal.id))
       : [];
+    const groceryNames = new Set(
+      orderedGroceryItems.map((item) => normalizeName(item.name)).filter(Boolean)
+    );
     const ingredientEntries = plan.recipes
       .flatMap((recipe) => recipe.ingredients)
       .map((ingredient) => ({
         name: ingredient.name?.trim() ?? '',
         category: ingredient.category?.toLowerCase() ?? '',
       }))
-      .filter((ingredient) => ingredient.name);
+      .filter((ingredient) => ingredient.name)
+      .filter((ingredient) => {
+        const normalized = normalizeName(ingredient.name);
+        return normalized ? groceryNames.has(normalized) : false;
+      });
     const uniqueIngredientKeys = new Set<string>();
     const ingredientList = ingredientEntries.filter((ingredient) => {
       const key = `${ingredient.name.toLowerCase()}::${ingredient.category}`;
@@ -737,7 +910,7 @@ export default function PlanScreen() {
       const compactDeal = normalizedDeal.replace(/\s+/g, '');
       const compactIngredient = normalizedIngredient.replace(/\s+/g, '');
       if (!normalizedDeal.includes(normalizedIngredient) && !compactDeal.includes(compactIngredient)) {
-        return false;
+        return matchDealToIngredient(deal, ingredientName);
       }
       if (ingredientTokens.length === 1) {
         const target = ingredientTokens[0];
@@ -763,36 +936,46 @@ export default function PlanScreen() {
       const compactDeal = normalizedDeal.replace(/\s+/g, '');
       const compactIngredient = normalizedIngredient.replace(/\s+/g, '');
       if (!normalizedDeal.includes(normalizedIngredient) && !compactDeal.includes(compactIngredient)) {
-        return false;
+        return matchDealToIngredient(deal, ingredientName);
       }
       return matchDealToIngredient(deal, ingredientName);
     };
     const storeCounts = new Map<string, { priced: number; total: number; protein: number }>();
+    const recordStoreCounts = (deal: DealItem, isProtein: boolean) => {
+      const entry = storeCounts.get(deal.store) ?? { priced: 0, total: 0, protein: 0 };
+      if (typeof deal.price === 'number' && Number.isFinite(deal.price)) {
+        entry.priced += 1;
+      }
+      entry.total += 1;
+      if (isProtein) {
+        entry.protein += 1;
+      }
+      storeCounts.set(deal.store, entry);
+    };
     ingredientList.forEach((ingredient) => {
       const isProtein = ['meat', 'seafood', 'protein'].includes(ingredient.category);
       const matches = allDeals.filter((deal) => matchesIngredient(deal, ingredient.name));
-      matches.forEach((deal) => {
-        const entry = storeCounts.get(deal.store) ?? { priced: 0, total: 0, protein: 0 };
-        if (typeof deal.price === 'number' && Number.isFinite(deal.price)) {
-          entry.priced += 1;
-        }
-        entry.total += 1;
-        if (isProtein) {
-          entry.protein += 1;
-        }
-        storeCounts.set(deal.store, entry);
-      });
+      matches.forEach((deal) => recordStoreCounts(deal, isProtein));
     });
-    let fallbackStore: string | undefined;
+    if (storeCounts.size === 0 && ingredientList.length > 0) {
+      ingredientList.forEach((ingredient) => {
+        const isProtein = ['meat', 'seafood', 'protein'].includes(ingredient.category);
+        const matches = filteredMatches.filter((deal) =>
+          matchesIngredientRelaxed(deal, ingredient.name)
+        );
+        matches.forEach((deal) => recordStoreCounts(deal, isProtein));
+      });
+    }
+    let fallbackStore: string | undefined = plan.selectedStore;
     if (favoriteDeals.length > 0) {
       const favoriteStoreCounts = new Map<string, number>();
       favoriteDeals.forEach((deal) => {
         favoriteStoreCounts.set(deal.store, (favoriteStoreCounts.get(deal.store) ?? 0) + 1);
       });
       const sortedFavorites = Array.from(favoriteStoreCounts.entries()).sort((a, b) => b[1] - a[1]);
-      fallbackStore = sortedFavorites[0]?.[0];
+      fallbackStore = fallbackStore ?? sortedFavorites[0]?.[0];
     }
-    if (storeCounts.size > 0) {
+    if (!fallbackStore && storeCounts.size > 0) {
       const sortedStores = Array.from(storeCounts.entries()).sort((a, b) => {
         const proteinDiff = b[1].protein - a[1].protein;
         if (proteinDiff !== 0) {
@@ -804,7 +987,7 @@ export default function PlanScreen() {
         }
         return b[1].priced - a[1].priced;
       });
-      fallbackStore = fallbackStore ?? sortedStores[0][0];
+      fallbackStore = sortedStores[0][0];
     }
     const scopedDeals = fallbackStore
       ? allDeals.filter((deal) => deal.store === fallbackStore)
@@ -817,11 +1000,15 @@ export default function PlanScreen() {
       'salt',
       'sugar',
       'flour',
+      'mirin',
+      'katsuo',
       'oil',
       'olive oil',
       'vegetable oil',
       'canola oil',
       'sesame oil',
+      'sesame seed',
+      'sesame seeds',
       'vinegar',
       'rice vinegar',
       'black vinegar',
@@ -840,6 +1027,8 @@ export default function PlanScreen() {
     ];
     const topSavingsExclusions = [
       'sauce',
+      'oil',
+      'vinegar',
       'gravy',
       'marinade',
       'dip',
@@ -863,7 +1052,10 @@ export default function PlanScreen() {
       'smoothie',
       'sparkling',
       'soda',
+      'tea',
+      'tea bag',
       'water',
+      'bottle',
       'breeze',
       'flower',
       'honeysuckle',
@@ -871,6 +1063,8 @@ export default function PlanScreen() {
       'pot',
       'skillet',
       'wok',
+      'non stick',
+      'non-stick',
       'baking sheet',
       'sheet pan',
       'cookware',
@@ -907,6 +1101,7 @@ export default function PlanScreen() {
     const spiceExceptions = ['sprout', 'shoot', 'greens', 'leaf', 'stalk', 'stem'];
     const filteredMatches = scopedDeals.filter((deal) => {
       const title = deal.title.toLowerCase();
+      const category = normalizeName(deal.category ?? '');
       if (pantryStaples.some((staple) => title.includes(staple))) {
         return false;
       }
@@ -915,6 +1110,11 @@ export default function PlanScreen() {
       }
       if (spiceLikeExclusions.some((term) => title.includes(term))) {
         return spiceExceptions.some((term) => title.includes(term));
+      }
+      if (category.includes('pantry')) {
+        return ingredientList.some((ingredient) =>
+          matchesIngredientRelaxed(deal, ingredient.name)
+        );
       }
       return true;
     });
@@ -926,11 +1126,30 @@ export default function PlanScreen() {
       }
       return a.name.localeCompare(b.name);
     });
-    const ingredientMatches = sortedIngredients.flatMap((ingredient) =>
+    let ingredientMatches = sortedIngredients.flatMap((ingredient) =>
       filteredMatches.filter((deal) => matchesIngredient(deal, ingredient.name))
     );
+    if (ingredientMatches.length === 0) {
+      const relaxedPool = filteredMatches;
+      const relaxedMatches = sortedIngredients.flatMap((ingredient) =>
+        relaxedPool.filter((deal) => matchesIngredientRelaxed(deal, ingredient.name))
+      );
+      if (__DEV__) {
+        console.log('[plan] top savings strict filter empty, using relaxed pool', {
+          scopedDeals: scopedDeals.length,
+          relaxedMatches: relaxedMatches.length,
+        });
+      }
+      ingredientMatches = relaxedMatches;
+    }
+    const fallbackPreferredMatches =
+      ingredientMatches.length === 0 && favoriteDeals.length > 0
+        ? sortedIngredients.flatMap((ingredient) =>
+            favoriteDeals.filter((deal) => matchesIngredientRelaxed(deal, ingredient.name))
+          )
+        : [];
     const uniqueMatches = new Map<string, DealItem>();
-    ingredientMatches.forEach((deal) => {
+    (ingredientMatches.length > 0 ? ingredientMatches : fallbackPreferredMatches).forEach((deal) => {
       if (!uniqueMatches.has(deal.id)) {
         uniqueMatches.set(deal.id, deal);
       }
@@ -995,8 +1214,8 @@ export default function PlanScreen() {
         return a.title.localeCompare(b.title);
       });
     }
-    return { deals, store: deals.length > 0 ? fallbackStore : undefined };
-  }, [plan, filteredDeals, favoriteDealIdsForPlan]);
+    return { deals, store: fallbackStore };
+  }, [plan, filteredDeals, favoriteDealIdsForPlan, orderedGroceryItems]);
 
   const renderTopDealTitle = (title: string) => {
     const quantityRegex = /[, ]+\d+(\.\d+)?(\s*-\s*\d+(\.\d+)?)?\s?(kg|g|lb|oz|l|ml|cl|pcs|ct|count|pack|pk|x)\b/gi;
@@ -1244,10 +1463,26 @@ export default function PlanScreen() {
               Cuisine: {selectedCuisines.map((item) => item[0].toUpperCase() + item.slice(1)).join(', ')}
             </Text>
           ) : null}
-          {plan?.recipes.length ? (
+          {draftRecipes !== null ? (
+            <>
+              {draftRecipes.map((recipe, index) => (
+                <RecipeCard
+                  key={`${recipe.id}-${index}`}
+                  recipe={recipe}
+                  index={index}
+                  servingsTarget={effectiveServings}
+                  onPress={handlePressRecipe}
+                  onRemove={handleRemoveRecipe}
+                />
+              ))}
+              {Array.from({ length: draftPlaceholders }).map((_, index) => (
+                <RecipeCardPlaceholder key={`placeholder-${index}`} index={index} />
+              ))}
+            </>
+          ) : plan?.recipes.length ? (
             plan.recipes.map((recipe, index) => (
               <RecipeCard
-                key={recipe.id}
+                key={`${recipe.id}-${index}`}
                 recipe={recipe}
                 index={index}
                 servingsTarget={effectiveServings}
@@ -1556,6 +1791,70 @@ const styles = StyleSheet.create({
   planCardPressable: {
     borderRadius: 10,
     overflow: 'visible',
+  },
+  placeholderCardWrap: {
+    marginBottom: 10,
+    borderRadius: 10,
+    backgroundColor: 'transparent',
+  },
+  placeholderCard: {
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#E1E5E8',
+    backgroundColor: '#E1F0E8',
+    overflow: 'hidden',
+  },
+  placeholderPulse: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#8EC4A5',
+    zIndex: 0,
+  },
+  placeholderLogoWrap: {
+    position: 'absolute',
+    width: 120,
+    height: 120,
+    left: '50%',
+    top: '44%',
+    transform: [{ translateX: -60 }, { translateY: -60 }],
+    zIndex: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    pointerEvents: 'none',
+  },
+  placeholderLogo: {
+    width: 88,
+    height: 88,
+  },
+  placeholderImage: {
+    height: 150,
+    backgroundColor: '#CDE8D8',
+  },
+  placeholderContent: {
+    padding: 12,
+    gap: 8,
+  },
+  placeholderLine: {
+    height: 10,
+    borderRadius: 6,
+    backgroundColor: '#BFDACB',
+  },
+  placeholderLineShort: {
+    height: 10,
+    width: '60%',
+    borderRadius: 6,
+    backgroundColor: '#BFDACB',
+  },
+  placeholderGloss: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#9BC9B1',
+    zIndex: 1,
+  },
+  placeholderShimmerBand: {
+    position: 'absolute',
+    top: -40,
+    bottom: -40,
+    width: 140,
+    backgroundColor: '#6FB38E',
   },
   coverWrap: {
     position: 'relative',

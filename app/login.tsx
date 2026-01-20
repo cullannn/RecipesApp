@@ -6,6 +6,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { GradientTitle } from '@/components/gradient-title';
 import { PatternBackground } from '@/components/pattern-background';
 import { useGoogleAuth } from '@/src/hooks/useGoogleAuth';
+import { usePreferencesStore } from '@/src/state/usePreferencesStore';
 import {
   useFonts,
   Montserrat_300Light,
@@ -16,6 +17,7 @@ import {
 
 export default function LoginScreen() {
   const { authError, signingIn, canSignIn, signIn, userId } = useGoogleAuth();
+  const onboardingComplete = usePreferencesStore((state) => state.onboardingComplete);
   const [fontsLoaded] = useFonts({
     Montserrat_300Light,
     Montserrat_400Regular,
@@ -24,7 +26,7 @@ export default function LoginScreen() {
   });
 
   if (userId) {
-    return <Redirect href="/(tabs)/deals" />;
+    return <Redirect href={onboardingComplete ? '/(tabs)/deals' : '/onboarding'} />;
   }
 
   if (!fontsLoaded) {

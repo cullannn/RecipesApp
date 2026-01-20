@@ -29,6 +29,10 @@ function applySynonyms(tokens: string[]): string[] {
       normalized.push('green', 'onion');
       continue;
     }
+    if (token === 'thigh') {
+      normalized.push('leg');
+      continue;
+    }
     normalized.push(token);
   }
   return normalized;
