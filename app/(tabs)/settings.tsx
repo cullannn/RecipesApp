@@ -18,6 +18,7 @@ export default function SettingsScreen() {
     allergies,
     householdSize,
     favoriteStores,
+    setOnboardingComplete,
   } = usePreferencesStore();
   const { isGeneratingPlan } = useMealPlanStore();
   const { userId, name, email, photoUrl, authError, signingIn, canSignIn, signIn, signOut } =

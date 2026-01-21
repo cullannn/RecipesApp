@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Redirect, router, useLocalSearchParams } from 'expo-router';
@@ -25,6 +25,9 @@ export default function OnboardingScreen() {
     setHouseholdSize,
     favoriteStores,
     toggleFavoriteStore,
+    pantryItems,
+    addPantryItem,
+    removePantryItem,
     onboardingComplete,
     setOnboardingComplete,
   } = usePreferencesStore();
@@ -35,6 +38,34 @@ export default function OnboardingScreen() {
   const [householdInput, setHouseholdInput] = useState(householdSize ? String(householdSize) : '');
   const [error, setError] = useState('');
   const [stepIndex, setStepIndex] = useState(0);
+  const scrollRef = useRef<ScrollView | null>(null);
+
+  const pantryOptions = [
+    {
+      category: 'Baking Supplies',
+      items: ['Baking Powder', 'Baking Soda', 'Cornstarch', 'Flour', 'Yeast'],
+    },
+    {
+      category: 'Condiments & Sauces',
+      items: ['Honey', 'Maple Syrup', 'Miso', 'Oyster Sauce', 'Soy Sauce', 'Vinegar'],
+    },
+    {
+      category: 'Grains & Pasta',
+      items: ['Rice', 'Pasta', 'Quinoa', 'Oats', 'Bread Crumbs', 'Noodles'],
+    },
+    {
+      category: 'Herbs & Spices',
+      items: ['Sugar', 'Salt', 'Pepper', 'Garlic Powder', 'Paprika', 'Cumin', 'Italian Seasoning'],
+    },
+    {
+      category: 'Oils & Vinegars',
+      items: ['Butter', 'Olive Oil', 'Vegetable Oil', 'Canola Oil', 'Sesame Oil', 'Balsamic Vinegar', 'Rice Vinegar'],
+    },
+    {
+      category: 'Others',
+      items: ['White Wine', 'Red Wine', 'Shaoxing Wine', 'Rice Wine'],
+    },
+  ];
 
   const toggleDietary = (option: string) => {
     setSelectedDietary((current) => {
@@ -58,7 +89,7 @@ export default function OnboardingScreen() {
     return <Redirect href="/(tabs)/deals" />;
   }
 
-  const totalSteps = 5;
+  const totalSteps = 6;
   const rawProgress = totalSteps > 1 ? stepIndex / (totalSteps - 1) : 0;
   const stepProgress = Number.isFinite(rawProgress)
     ? Math.max(0, Math.min(1, rawProgress))
@@ -112,6 +143,8 @@ export default function OnboardingScreen() {
         return 'Household size';
       case 4:
         return 'Favorite grocery stores';
+      case 5:
+        return 'My Pantry Items';
       default:
         return 'Set up your kitchen';
     }
@@ -131,6 +164,7 @@ export default function OnboardingScreen() {
     }
     setError('');
     setStepIndex((current) => Math.min(totalSteps - 1, current + 1));
+    requestAnimationFrame(() => scrollRef.current?.scrollTo({ y: 0, animated: false }));
   };
 
   const canAdvanceStep =
@@ -145,7 +179,9 @@ export default function OnboardingScreen() {
   const handleBack = () => {
     setError('');
     setStepIndex((current) => Math.max(0, current - 1));
+    requestAnimationFrame(() => scrollRef.current?.scrollTo({ y: 0, animated: false }));
   };
+
 
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'left', 'right']}>
@@ -167,8 +203,9 @@ export default function OnboardingScreen() {
       <View style={styles.contentSurface}>
         <PatternBackground />
         <ScrollView
+          ref={scrollRef}
           contentContainerStyle={styles.container}
-          scrollEnabled={isEditing || stepIndex === 4}>
+          scrollEnabled>
           <View style={styles.card}>
             <Text style={styles.subtitle}>Set up your kitchen</Text>
             {isEditing ? null : (
@@ -281,6 +318,40 @@ export default function OnboardingScreen() {
                       </Pressable>
                     );
                   })}
+                </View>
+              </View>
+            ) : null}
+
+            {!isEditing && stepIndex === 5 ? (
+              <View style={styles.section}>
+                <View style={styles.pantryScrollContent}>
+                  {pantryOptions.map((group) => (
+                    <View key={group.category} style={styles.pantryGroup}>
+                      <Text style={styles.sectionSubtitle}>{group.category}</Text>
+                      <View style={styles.pantryOptionList}>
+                        {group.items.map((item) => {
+                          const selected = pantryItems.some(
+                            (entry) =>
+                              entry.category === group.category &&
+                              entry.name.toLowerCase() === item.toLowerCase()
+                          );
+                          return (
+                            <Pressable
+                              key={`${group.category}-${item}`}
+                              onPress={() =>
+                                selected
+                                  ? removePantryItem({ name: item, category: group.category as any })
+                                  : addPantryItem(item, group.category as any)
+                              }
+                              style={styles.pantryOptionRow}>
+                              <Text style={styles.pantryOptionText}>{item}</Text>
+                              <Checkbox status={selected ? 'checked' : 'unchecked'} />
+                            </Pressable>
+                          );
+                        })}
+                      </View>
+                    </View>
+                  ))}
                 </View>
               </View>
             ) : null}
@@ -464,6 +535,31 @@ const styles = StyleSheet.create({
   },
   storeList: {
     gap: 8,
+  },
+  pantryGroup: {
+    marginBottom: 16,
+  },
+  pantryScrollContent: {
+    paddingBottom: 8,
+  },
+  pantryOptionList: {
+    gap: 6,
+  },
+  pantryOptionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 10,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: '#EEF1F6',
+  },
+  pantryOptionText: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#1F1F1F',
   },
   storeRow: {
     flexDirection: 'row',

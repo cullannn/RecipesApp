@@ -299,13 +299,13 @@ const RecipeCardPlaceholder = memo(function RecipeCardPlaceholder({ index }: { i
           toValue: 1,
           duration: 900,
           easing: Easing.inOut(Easing.cubic),
-          useNativeDriver: true,
+          useNativeDriver: false,
         }),
         Animated.timing(shimmer, {
           toValue: 0,
           duration: 900,
           easing: Easing.inOut(Easing.cubic),
-          useNativeDriver: true,
+          useNativeDriver: false,
         }),
       ])
     );
@@ -655,15 +655,16 @@ export default function PlanScreen() {
       setDraftPlaceholders(0);
       return;
     }
-    if (aiPrompt.trim() && dealsQuery.isLoading) {
+    if (dealsQuery.isLoading) {
       setInfo('Deals are still loading. Plan will generate without them for now.');
     }
     try {
       let recipesForPlan = recipes;
       let planPinnedIds: string[] = [];
-      if (aiPrompt.trim()) {
+      const promptValue = aiPrompt.trim() || "Chef's choice";
+      if (true) {
         const { recipes: generated, cuisineFallback } = await generateRecipesFromPrompt({
-          prompt: aiPrompt.trim(),
+          prompt: promptValue,
           cuisines: selectedCuisines,
           count: mealsRequested,
           servings,
@@ -697,7 +698,7 @@ export default function PlanScreen() {
             const needed = mealsRequested - merged.length;
             const excludeTitles = merged.map((recipe) => recipe.title).filter(Boolean);
             const { recipes: followup } = await generateRecipesFromPrompt({
-              prompt: aiPrompt.trim(),
+              prompt: promptValue,
               cuisines: selectedCuisines,
               count: needed,
               servings,
@@ -1476,6 +1477,12 @@ export default function PlanScreen() {
                 />
               ))}
               {Array.from({ length: draftPlaceholders }).map((_, index) => (
+                <RecipeCardPlaceholder key={`placeholder-${index}`} index={index} />
+              ))}
+            </>
+          ) : isGeneratingPlan ? (
+            <>
+              {Array.from({ length: mealsRequested }).map((_, index) => (
                 <RecipeCardPlaceholder key={`placeholder-${index}`} index={index} />
               ))}
             </>

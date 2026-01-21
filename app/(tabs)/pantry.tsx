@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useRef, useState } from 'react';
+import { Animated, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Button, List, TextInput as PaperTextInput } from 'react-native-paper';
@@ -16,6 +16,13 @@ export default function PantryScreen() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [categoryOpen, setCategoryOpen] = useState(false);
   const canAdd = Boolean(pantryInput.trim() && selectedCategory);
+  const addScale = useRef(new Animated.Value(1)).current;
+  const animateAdd = () => {
+    Animated.sequence([
+      Animated.timing(addScale, { toValue: 0.94, duration: 90, useNativeDriver: true }),
+      Animated.timing(addScale, { toValue: 1, duration: 140, useNativeDriver: true }),
+    ]).start();
+  };
 
   const categories = [
     'Baking Supplies',
@@ -34,6 +41,7 @@ export default function PantryScreen() {
     if (!selectedCategory) {
       return;
     }
+    animateAdd();
     addPantryItem(pantryInput, selectedCategory as typeof categories[number]);
     setPantryInput('');
   };
@@ -136,18 +144,20 @@ export default function PantryScreen() {
                 dense
               />
             </View>
-            <Button
-              mode="contained"
-              onPress={handleAddPantryItem}
-              disabled={!canAdd}
-              buttonColor={canAdd ? '#3C9A5C' : '#E0E0E0'}
-              textColor={canAdd ? '#FFFFFF' : '#9AA0A6'}
-              style={styles.pantryAddButton}
-              contentStyle={styles.pantryAddButtonContent}>
-              <Text style={[styles.pantryAddButtonText, !canAdd && styles.pantryAddButtonTextDisabled]}>
-                Add
-              </Text>
-            </Button>
+            <Animated.View style={{ transform: [{ scale: addScale }] }}>
+              <Button
+                mode="contained"
+                onPress={handleAddPantryItem}
+                disabled={!canAdd}
+                buttonColor={canAdd ? '#3C9A5C' : '#E0E0E0'}
+                textColor={canAdd ? '#FFFFFF' : '#9AA0A6'}
+                style={styles.pantryAddButton}
+                contentStyle={styles.pantryAddButtonContent}>
+                <Text style={[styles.pantryAddButtonText, !canAdd && styles.pantryAddButtonTextDisabled]}>
+                  Add
+                </Text>
+              </Button>
+            </Animated.View>
           </View>
           {pantryItems.length ? (
             <View style={styles.pantryList}>
@@ -322,7 +332,7 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   pantryInputWrap: {
-    width: 250,
+    flex: 1,
   },
   pantryAddButton: {
     height: 34,
